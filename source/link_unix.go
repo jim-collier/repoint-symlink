@@ -31,13 +31,13 @@ func classifyLink(path string, d fs.DirEntry) (*LinkEntry, bool, error) {
 
 // writeLinkTarget repoints a symlink by creating a replacement beside it and
 // renaming over the original - atomic on POSIX, so the link is never missing.
-func writeLinkTarget(e LinkEntry, newTarget string) error {
-	tmp := e.Path + ".repoint.tmp"
+func writeLinkTarget(entry LinkEntry, newTarget string) error {
+	tmp := entry.Path + ".repoint.tmp"
 	_ = os.Remove(tmp)
 	if err := os.Symlink(newTarget, tmp); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, e.Path); err != nil {
+	if err := os.Rename(tmp, entry.Path); err != nil {
 		_ = os.Remove(tmp)
 		return err
 	}

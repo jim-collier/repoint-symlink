@@ -41,41 +41,41 @@ var valueFlags = []string{"include", "exclude", "name", "iname", "from", "to", "
 var boolFlags = []string{"dry-run", "fixed", "verbose", "quiet", "version", "help", "examples"}
 
 func parseArgs(argv []string) (*options, error) {
-	o := &options{dir: ".", maxDepth: -1}
+	opts := &options{dir: ".", maxDepth: -1}
 	var pos []string
 	seenFrom, seenTo := false, false
 
 	i := 0
 	for i < len(argv) {
-		a := argv[i]
+		arg := argv[i]
 		i++
 
-		if a == "--" { // rest are positional
+		if arg == "--" { // rest are positional
 			pos = append(pos, argv[i:]...)
 			break
 		}
 
 		// Short single-dash bool flags (bundling allowed: -nv).
-		if len(a) >= 2 && a[0] == '-' && a[1] != '-' {
-			if err := parseShort(a, o); err != nil {
+		if len(arg) >= 2 && arg[0] == '-' && arg[1] != '-' {
+			if err := parseShort(arg, opts); err != nil {
 				return nil, err
 			}
 			continue
 		}
 
 		// Long flags.
-		if strings.HasPrefix(a, "--") {
-			name, val, hasVal := strings.Cut(a[2:], "=")
+		if strings.HasPrefix(arg, "--") {
+			name, val, hasVal := strings.Cut(arg[2:], "=")
 			canon, err := resolveLong(name)
 			if err != nil {
 				return nil, err
 			}
 			if isBool(canon) {
-				b, err := boolValue(canon, val, hasVal)
+				enabled, err := boolValue(canon, val, hasVal)
 				if err != nil {
 					return nil, err
 				}
-				setBool(o, canon, b)
+				setBool(opts, canon, enabled)
 				continue
 			}
 			// value flag
@@ -86,47 +86,47 @@ func parseArgs(argv []string) (*options, error) {
 				val = argv[i]
 				i++
 			}
-			if err := setValue(o, canon, val, &seenFrom, &seenTo); err != nil {
+			if err := setValue(opts, canon, val, &seenFrom, &seenTo); err != nil {
 				return nil, err
 			}
 			continue
 		}
 
-		pos = append(pos, a)
+		pos = append(pos, arg)
 	}
 
 	// Positional fill: dir, from, to. Explicit flags win over positionals.
 	if len(pos) >= 1 {
-		o.dir = pos[0]
+		opts.dir = pos[0]
 	}
 	if len(pos) >= 2 && !seenFrom {
-		o.from = pos[1]
-		o.fromSet = true
+		opts.from = pos[1]
+		opts.fromSet = true
 	}
 	if len(pos) >= 3 && !seenTo {
-		o.to = pos[2]
+		opts.to = pos[2]
 	}
 	if len(pos) > 3 {
 		return nil, fmt.Errorf("too many positional arguments: %s", strings.Join(pos[3:], " "))
 	}
-	return o, nil
+	return opts, nil
 }
 
-func parseShort(a string, o *options) error {
-	for _, c := range a[1:] {
-		switch c {
+func parseShort(arg string, opts *options) error {
+	for _, ch := range arg[1:] {
+		switch ch {
 		case 'n':
-			o.dryRun = true
+			opts.dryRun = true
 		case 'F':
-			o.fixed = true
+			opts.fixed = true
 		case 'v':
-			o.verbose = true
+			opts.verbose = true
 		case 'q':
-			o.quiet = true
+			opts.quiet = true
 		case 'h':
-			o.showHelp = true
+			opts.showHelp = true
 		default:
-			return fmt.Errorf("unknown flag -%c", c)
+			return fmt.Errorf("unknown flag -%c", ch)
 		}
 	}
 	return nil
@@ -136,35 +136,35 @@ func parseShort(a string, o *options) error {
 // spelling. Exact match wins; otherwise a prefix >= minPrefix that matches
 // exactly one canonical name is accepted; ambiguity is an error.
 func resolveLong(name string) (string, error) {
-	all := append(append([]string{}, valueFlags...), boolFlags...)
-	for _, c := range all {
-		if name == c {
-			return c, nil
+	allFlags := append(append([]string{}, valueFlags...), boolFlags...)
+	for _, flag := range allFlags {
+		if name == flag {
+			return flag, nil
 		}
 	}
 	if len(name) < minPrefix {
 		return "", fmt.Errorf("unknown flag --%s", name)
 	}
-	var hits []string
-	for _, c := range all {
-		if strings.HasPrefix(c, name) {
-			hits = append(hits, c)
+	var matches []string
+	for _, flag := range allFlags {
+		if strings.HasPrefix(flag, name) {
+			matches = append(matches, flag)
 		}
 	}
-	switch len(hits) {
+	switch len(matches) {
 	case 1:
-		return hits[0], nil
+		return matches[0], nil
 	case 0:
 		return "", fmt.Errorf("unknown flag --%s", name)
 	default:
-		sort.Strings(hits)
-		return "", fmt.Errorf("ambiguous flag --%s (matches: %s)", name, strings.Join(hits, ", "))
+		sort.Strings(matches)
+		return "", fmt.Errorf("ambiguous flag --%s (matches: %s)", name, strings.Join(matches, ", "))
 	}
 }
 
 func isBool(canon string) bool {
-	for _, b := range boolFlags {
-		if b == canon {
+	for _, flag := range boolFlags {
+		if flag == canon {
 			return true
 		}
 	}
@@ -185,48 +185,48 @@ func boolValue(canon, val string, hasVal bool) (bool, error) {
 	}
 }
 
-func setBool(o *options, canon string, b bool) {
+func setBool(opts *options, canon string, enabled bool) {
 	switch canon {
 	case "dry-run":
-		o.dryRun = b
+		opts.dryRun = enabled
 	case "fixed":
-		o.fixed = b
+		opts.fixed = enabled
 	case "verbose":
-		o.verbose = b
+		opts.verbose = enabled
 	case "quiet":
-		o.quiet = b
+		opts.quiet = enabled
 	case "version":
-		o.showVersion = b
+		opts.showVersion = enabled
 	case "help":
-		o.showHelp = b
+		opts.showHelp = enabled
 	case "examples":
-		o.showExamples = b
+		opts.showExamples = enabled
 	}
 }
 
-func setValue(o *options, canon, val string, seenFrom, seenTo *bool) error {
+func setValue(opts *options, canon, val string, seenFrom, seenTo *bool) error {
 	switch canon {
 	case "include":
-		o.includes = append(o.includes, val)
+		opts.includes = append(opts.includes, val)
 	case "exclude":
-		o.excludes = append(o.excludes, val)
+		opts.excludes = append(opts.excludes, val)
 	case "name":
-		o.names = append(o.names, val)
+		opts.names = append(opts.names, val)
 	case "iname":
-		o.inames = append(o.inames, val)
+		opts.inames = append(opts.inames, val)
 	case "from":
-		o.from = val
-		o.fromSet = true
+		opts.from = val
+		opts.fromSet = true
 		*seenFrom = true
 	case "to":
-		o.to = val
+		opts.to = val
 		*seenTo = true
 	case "max-depth":
-		n, err := parseInt(val)
+		depth, err := parseInt(val)
 		if err != nil {
 			return fmt.Errorf("--max-depth: %w", err)
 		}
-		o.maxDepth = n
+		opts.maxDepth = depth
 	}
 	return nil
 }
@@ -236,11 +236,11 @@ func parseInt(s string) (int, error) {
 	if s == "" {
 		return 0, fmt.Errorf("empty number")
 	}
-	for _, c := range s {
-		if c < '0' || c > '9' {
+	for _, ch := range s {
+		if ch < '0' || ch > '9' {
 			return 0, fmt.Errorf("not a number: %q", s)
 		}
-		n = n*10 + int(c-'0')
+		n = n*10 + int(ch-'0')
 	}
 	return n, nil
 }
