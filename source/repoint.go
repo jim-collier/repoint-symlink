@@ -23,25 +23,25 @@ type repointer struct {
 	editMode bool
 }
 
-func buildRepointer(o *options) (*repointer, error) {
-	r := &repointer{to: o.to, fixed: o.fixed}
-	if !o.fromSet || o.from == "" {
-		if o.fromSet && o.from == "" {
+func buildRepointer(opts *options) (*repointer, error) {
+	rp := &repointer{to: opts.to, fixed: opts.fixed}
+	if !opts.fromSet || opts.from == "" {
+		if opts.fromSet && opts.from == "" {
 			warnf("--from is empty; listing matches only")
 		}
-		return r, nil // list-only
+		return rp, nil // list-only
 	}
-	r.editMode = true
-	if o.fixed {
-		r.fromLit = o.from
-		return r, nil
+	rp.editMode = true
+	if opts.fixed {
+		rp.fromLit = opts.from
+		return rp, nil
 	}
-	re, err := regexp2.Compile(o.from, regexp2.None)
+	re, err := regexp2.Compile(opts.from, regexp2.None)
 	if err != nil {
-		return nil, fmt.Errorf("bad --from regex %q: %w", o.from, err)
+		return nil, fmt.Errorf("bad --from regex %q: %w", opts.from, err)
 	}
-	r.fromRE = re
-	return r, nil
+	rp.fromRE = re
+	return rp, nil
 }
 
 func (r *repointer) transform(target string) (string, error) {
@@ -56,66 +56,66 @@ func (r *repointer) transform(target string) (string, error) {
 
 // process finds, reports, and (unless dry-run) rewrites matching links.
 // Returns the number of links changed and whether any write failed.
-func process(o *options, f *filters, r *repointer, entries []LinkEntry) (changed int, failed bool) {
+func process(opts *options, filt *filters, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
 	matched := 0
-	for _, e := range entries {
-		if !f.selects(e.Path) {
+	for _, entry := range entries {
+		if !filt.selects(entry.Path) {
 			continue
 		}
 		matched++
 
-		if !r.editMode {
-			if !o.quiet {
-				fmt.Printf("%s -> %s  [%s]\n", e.Path, e.Target, e.Kind)
+		if !rp.editMode {
+			if !opts.quiet {
+				fmt.Printf("%s -> %s  [%s]\n", entry.Path, entry.Target, entry.Kind)
 			}
 			continue
 		}
 
-		newTarget, err := r.transform(e.Target)
+		newTarget, err := rp.transform(entry.Target)
 		if err != nil {
-			warnf("%s: transform failed: %v", e.Path, err)
+			warnf("%s: transform failed: %v", entry.Path, err)
 			failed = true
 			continue
 		}
-		if newTarget == e.Target {
-			if o.verbose {
-				fmt.Printf("unchanged: %s -> %s\n", e.Path, e.Target)
+		if newTarget == entry.Target {
+			if opts.verbose {
+				fmt.Printf("unchanged: %s -> %s\n", entry.Path, entry.Target)
 			}
 			continue
 		}
 
 		verb := "repointed"
-		if o.dryRun {
+		if opts.dryRun {
 			verb = "would repoint"
 		}
-		if !o.quiet {
-			fmt.Printf("%s: %s  [%s]\n    %s -> %s\n", verb, e.Path, e.Kind, e.Target, newTarget)
+		if !opts.quiet {
+			fmt.Printf("%s: %s  [%s]\n    %s -> %s\n", verb, entry.Path, entry.Kind, entry.Target, newTarget)
 		}
-		if o.dryRun {
+		if opts.dryRun {
 			changed++
 			continue
 		}
-		if err := writeLinkTarget(e, newTarget); err != nil {
-			warnf("%s: write failed: %v", e.Path, err)
+		if err := writeLinkTarget(entry, newTarget); err != nil {
+			warnf("%s: write failed: %v", entry.Path, err)
 			failed = true
 			continue
 		}
 		changed++
 	}
 
-	printSummary(o, r, matched, changed)
+	printSummary(opts, rp, matched, changed)
 	return changed, failed
 }
 
-func printSummary(o *options, r *repointer, matched, changed int) {
-	if o.quiet {
+func printSummary(opts *options, rp *repointer, matched, changed int) {
+	if opts.quiet {
 		return
 	}
-	if !r.editMode {
+	if !rp.editMode {
 		fmt.Printf("\n%d matching %s.\n", matched, plural(matched, "link", "links"))
 		return
 	}
-	if o.dryRun {
+	if opts.dryRun {
 		fmt.Printf("\nDry run: %d of %d matched %s would change (nothing written).\n",
 			changed, matched, plural(matched, "link", "links"))
 		return

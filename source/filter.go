@@ -30,29 +30,29 @@ type filters struct {
 	inames   []string          // basename globs, case-insensitive, OR
 }
 
-func compileFilters(o *options) (*filters, error) {
-	f := &filters{names: o.names, inames: o.inames}
-	for _, p := range o.includes {
-		re, err := regexp2.Compile(p, regexp2.None)
+func compileFilters(opts *options) (*filters, error) {
+	filt := &filters{names: opts.names, inames: opts.inames}
+	for _, pattern := range opts.includes {
+		re, err := regexp2.Compile(pattern, regexp2.None)
 		if err != nil {
-			return nil, fmt.Errorf("bad --include regex %q: %w", p, err)
+			return nil, fmt.Errorf("bad --include regex %q: %w", pattern, err)
 		}
-		f.includes = append(f.includes, re)
+		filt.includes = append(filt.includes, re)
 	}
-	for _, p := range o.excludes {
-		re, err := regexp2.Compile(p, regexp2.None)
+	for _, pattern := range opts.excludes {
+		re, err := regexp2.Compile(pattern, regexp2.None)
 		if err != nil {
-			return nil, fmt.Errorf("bad --exclude regex %q: %w", p, err)
+			return nil, fmt.Errorf("bad --exclude regex %q: %w", pattern, err)
 		}
-		f.excludes = append(f.excludes, re)
+		filt.excludes = append(filt.excludes, re)
 	}
 	// Validate name globs up front so a typo fails loudly, not silently.
-	for _, g := range append(append([]string{}, o.names...), o.inames...) {
-		if _, err := filepath.Match(g, ""); err != nil {
-			return nil, fmt.Errorf("bad glob %q: %w", g, err)
+	for _, glob := range append(append([]string{}, opts.names...), opts.inames...) {
+		if _, err := filepath.Match(glob, ""); err != nil {
+			return nil, fmt.Errorf("bad glob %q: %w", glob, err)
 		}
 	}
-	return f, nil
+	return filt, nil
 }
 
 func (f *filters) selects(linkPath string) bool {
@@ -71,9 +71,9 @@ func (f *filters) selects(linkPath string) bool {
 	return true
 }
 
-func anyMatch(res []*regexp2.Regexp, s string) bool {
-	for _, re := range res {
-		if ok, _ := re.MatchString(s); ok {
+func anyMatch(patterns []*regexp2.Regexp, subject string) bool {
+	for _, re := range patterns {
+		if ok, _ := re.MatchString(subject); ok {
 			return true
 		}
 	}
@@ -81,12 +81,12 @@ func anyMatch(res []*regexp2.Regexp, s string) bool {
 }
 
 func globMatch(globs []string, name string, fold bool) bool {
-	for _, g := range globs {
-		gg, nn := g, name
+	for _, glob := range globs {
+		foldGlob, foldName := glob, name
 		if fold {
-			gg, nn = strings.ToLower(g), strings.ToLower(name)
+			foldGlob, foldName = strings.ToLower(glob), strings.ToLower(name)
 		}
-		if ok, _ := filepath.Match(gg, nn); ok {
+		if ok, _ := filepath.Match(foldGlob, foldName); ok {
 			return true
 		}
 	}

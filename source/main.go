@@ -23,7 +23,7 @@ func main() {
 }
 
 func run(argv []string) int {
-	o, err := parseArgs(argv)
+	opts, err := parseArgs(argv)
 	if err != nil {
 		errorf("%v", err)
 		errorf("try --help")
@@ -31,46 +31,46 @@ func run(argv []string) int {
 	}
 
 	switch {
-	case o.showVersion:
+	case opts.showVersion:
 		fmt.Println(version)
 		return 0
-	case o.showHelp:
+	case opts.showHelp:
 		printHelp()
 		return 0
-	case o.showExamples:
+	case opts.showExamples:
 		printExamples()
 		return 0
 	}
 
-	f, err := compileFilters(o)
+	filt, err := compileFilters(opts)
 	if err != nil {
 		errorf("%v", err)
 		return 2
 	}
-	r, err := buildRepointer(o)
+	rp, err := buildRepointer(opts)
 	if err != nil {
 		errorf("%v", err)
 		return 2
 	}
 
 	// Start dir must resolve to a directory.
-	fi, err := os.Stat(o.dir)
+	info, err := os.Stat(opts.dir)
 	if err != nil {
-		errorf("cannot read start folder %q: %v", o.dir, err)
+		errorf("cannot read start folder %q: %v", opts.dir, err)
 		return 1
 	}
-	if !fi.IsDir() {
-		errorf("start folder %q is not a directory", o.dir)
+	if !info.IsDir() {
+		errorf("start folder %q is not a directory", opts.dir)
 		return 1
 	}
 
-	entries, err := collectLinks(o.dir, o.maxDepth)
+	entries, err := collectLinks(opts.dir, opts.maxDepth)
 	if err != nil {
 		errorf("walk failed: %v", err)
 		return 1
 	}
 
-	_, failed := process(o, f, r, entries)
+	_, failed := process(opts, filt, rp, entries)
 	if failed {
 		return 1
 	}

@@ -17,12 +17,12 @@ import (
 // keeps it loop-safe. maxDepth < 0 means unlimited; depth 1 = direct children.
 // classifyLink is platform-specific (see link_unix.go / link_windows.go).
 func collectLinks(root string, maxDepth int) ([]LinkEntry, error) {
-	var out []LinkEntry
+	var links []LinkEntry
 
 	// If the start dir is itself a symlink to a directory, resolve it so we walk
 	// its contents rather than stopping at the link.
 	walkRoot := root
-	if fi, err := os.Lstat(root); err == nil && fi.Mode()&fs.ModeSymlink != 0 {
+	if info, err := os.Lstat(root); err == nil && info.Mode()&fs.ModeSymlink != 0 {
 		if resolved, err := filepath.EvalSymlinks(root); err == nil {
 			walkRoot = resolved
 		}
@@ -42,17 +42,17 @@ func collectLinks(root string, maxDepth int) ([]LinkEntry, error) {
 			}
 			return nil
 		}
-		e, ok, cerr := classifyLink(path, d)
-		if cerr != nil {
-			warnf("%s: %v", path, cerr)
+		entry, ok, classifyErr := classifyLink(path, d)
+		if classifyErr != nil {
+			warnf("%s: %v", path, classifyErr)
 			return nil
 		}
 		if ok {
-			out = append(out, *e)
+			links = append(links, *entry)
 		}
 		return nil
 	})
-	return out, err
+	return links, err
 }
 
 func entryDepth(root, path string) int {

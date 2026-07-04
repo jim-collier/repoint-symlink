@@ -72,23 +72,23 @@ func classifyLink(path string, d fs.DirEntry) (*LinkEntry, bool, error) {
 	}
 }
 
-func writeLinkTarget(e LinkEntry, newTarget string) error {
-	switch e.Kind {
+func writeLinkTarget(entry LinkEntry, newTarget string) error {
+	switch entry.Kind {
 	case KindShortcut:
-		return writeShortcut(e.Path, newTarget)
+		return writeShortcut(entry.Path, newTarget)
 	case KindJunction:
-		return writeJunction(e.Path, newTarget)
+		return writeJunction(entry.Path, newTarget)
 	default:
-		return writeSymlink(e, newTarget)
+		return writeSymlink(entry, newTarget)
 	}
 }
 
 func isReparsePoint(path string) bool {
-	p, err := windows.UTF16PtrFromString(path)
+	ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return false
 	}
-	attrs, err := windows.GetFileAttributes(p)
+	attrs, err := windows.GetFileAttributes(ptr)
 	if err != nil {
 		return false
 	}
@@ -96,14 +96,14 @@ func isReparsePoint(path string) bool {
 }
 
 func reparseTag(path string) (uint32, error) {
-	h, err := openReparse(path, 0)
+	handle, err := openReparse(path, 0)
 	if err != nil {
 		return 0, err
 	}
-	defer windows.CloseHandle(h)
+	defer windows.CloseHandle(handle)
 	buf := make([]byte, maxReparse)
 	var ret uint32
-	if err := windows.DeviceIoControl(h, fsctlGetReparsePoint, nil, 0, &buf[0], uint32(len(buf)), &ret, nil); err != nil {
+	if err := windows.DeviceIoControl(handle, fsctlGetReparsePoint, nil, 0, &buf[0], uint32(len(buf)), &ret, nil); err != nil {
 		return 0, err
 	}
 	if ret < 4 {
@@ -113,33 +113,33 @@ func reparseTag(path string) (uint32, error) {
 }
 
 func openReparse(path string, access uint32) (windows.Handle, error) {
-	p, err := windows.UTF16PtrFromString(path)
+	ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return windows.InvalidHandle, err
 	}
-	return windows.CreateFile(p, access,
+	return windows.CreateFile(ptr, access,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
 		nil, windows.OPEN_EXISTING,
 		windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 }
 
-func writeSymlink(e LinkEntry, newTarget string) error {
-	if err := os.Remove(e.Path); err != nil {
+func writeSymlink(entry LinkEntry, newTarget string) error {
+	if err := os.Remove(entry.Path); err != nil {
 		return err
 	}
-	tgt, err := windows.UTF16PtrFromString(newTarget)
+	targetPtr, err := windows.UTF16PtrFromString(newTarget)
 	if err != nil {
 		return err
 	}
-	lnk, err := windows.UTF16PtrFromString(e.Path)
+	linkPtr, err := windows.UTF16PtrFromString(entry.Path)
 	if err != nil {
 		return err
 	}
 	var flags uint32 = symlinkFlagUnprivileged
-	if e.IsDir {
+	if entry.IsDir {
 		flags |= windows.SYMBOLIC_LINK_FLAG_DIRECTORY
 	}
-	return windows.CreateSymbolicLink(lnk, tgt, flags)
+	return windows.CreateSymbolicLink(linkPtr, targetPtr, flags)
 }
 
 // writeJunction overwrites an existing junction's mount-point reparse buffer.
@@ -150,40 +150,40 @@ func writeJunction(path, target string) error {
 		return fmt.Errorf("junction target must be absolute: %q", target)
 	}
 	subst := `\??\` + target
-	sw := utf16.Encode([]rune(subst))
-	pw := utf16.Encode([]rune(target))
+	substName16 := utf16.Encode([]rune(subst))
+	printName16 := utf16.Encode([]rune(target))
 
 	var pathBuf bytes.Buffer
-	writeU16(&pathBuf, sw)
+	writeU16(&pathBuf, substName16)
 	pathBuf.Write([]byte{0, 0}) // null terminator
-	writeU16(&pathBuf, pw)
+	writeU16(&pathBuf, printName16)
 	pathBuf.Write([]byte{0, 0})
-	pb := pathBuf.Bytes()
+	pathBytes := pathBuf.Bytes()
 
-	var b bytes.Buffer
-	wu32 := func(v uint32) { binary.Write(&b, binary.LittleEndian, v) }
-	wu16 := func(v uint16) { binary.Write(&b, binary.LittleEndian, v) }
+	var reparse bytes.Buffer
+	wu32 := func(v uint32) { binary.Write(&reparse, binary.LittleEndian, v) }
+	wu16 := func(v uint16) { binary.Write(&reparse, binary.LittleEndian, v) }
 	wu32(windows.IO_REPARSE_TAG_MOUNT_POINT)
-	wu16(uint16(8 + len(pb)))       // ReparseDataLength: the four USHORTs + PathBuffer
-	wu16(0)                         // Reserved
-	wu16(0)                         // SubstituteNameOffset
-	wu16(uint16(len(sw) * 2))       // SubstituteNameLength (bytes, no null)
-	wu16(uint16((len(sw) + 1) * 2)) // PrintNameOffset
-	wu16(uint16(len(pw) * 2))       // PrintNameLength
-	b.Write(pb)
-	data := b.Bytes()
+	wu16(uint16(8 + len(pathBytes)))         // ReparseDataLength: the four USHORTs + PathBuffer
+	wu16(0)                                  // Reserved
+	wu16(0)                                  // SubstituteNameOffset
+	wu16(uint16(len(substName16) * 2))       // SubstituteNameLength (bytes, no null)
+	wu16(uint16((len(substName16) + 1) * 2)) // PrintNameOffset
+	wu16(uint16(len(printName16) * 2))       // PrintNameLength
+	reparse.Write(pathBytes)
+	data := reparse.Bytes()
 
-	h, err := openReparse(path, windows.GENERIC_WRITE)
+	handle, err := openReparse(path, windows.GENERIC_WRITE)
 	if err != nil {
 		return err
 	}
-	defer windows.CloseHandle(h)
+	defer windows.CloseHandle(handle)
 	var ret uint32
-	return windows.DeviceIoControl(h, fsctlSetReparsePoint, &data[0], uint32(len(data)), nil, 0, &ret, nil)
+	return windows.DeviceIoControl(handle, fsctlSetReparsePoint, &data[0], uint32(len(data)), nil, 0, &ret, nil)
 }
 
-func writeU16(w *bytes.Buffer, vs []uint16) {
-	for _, v := range vs {
+func writeU16(w *bytes.Buffer, values []uint16) {
+	for _, v := range values {
 		w.Write([]byte{byte(v), byte(v >> 8)})
 	}
 }
@@ -193,17 +193,17 @@ func writeU16(w *bytes.Buffer, vs []uint16) {
 func readShortcut(path string) (string, error) {
 	var result string
 	err := withCOM(func(wsh *ole.IDispatch) error {
-		lnkV, err := oleutil.CallMethod(wsh, "CreateShortcut", path)
+		shortcutVar, err := oleutil.CallMethod(wsh, "CreateShortcut", path)
 		if err != nil {
 			return err
 		}
-		lnk := lnkV.ToIDispatch()
-		defer lnk.Release()
-		tp, err := oleutil.GetProperty(lnk, "TargetPath")
+		shortcut := shortcutVar.ToIDispatch()
+		defer shortcut.Release()
+		targetProp, err := oleutil.GetProperty(shortcut, "TargetPath")
 		if err != nil {
 			return err
 		}
-		result = tp.ToString()
+		result = targetProp.ToString()
 		return nil
 	})
 	return result, err
@@ -211,16 +211,16 @@ func readShortcut(path string) (string, error) {
 
 func writeShortcut(path, target string) error {
 	return withCOM(func(wsh *ole.IDispatch) error {
-		lnkV, err := oleutil.CallMethod(wsh, "CreateShortcut", path)
+		shortcutVar, err := oleutil.CallMethod(wsh, "CreateShortcut", path)
 		if err != nil {
 			return err
 		}
-		lnk := lnkV.ToIDispatch()
-		defer lnk.Release()
-		if _, err := oleutil.PutProperty(lnk, "TargetPath", target); err != nil {
+		shortcut := shortcutVar.ToIDispatch()
+		defer shortcut.Release()
+		if _, err := oleutil.PutProperty(shortcut, "TargetPath", target); err != nil {
 			return err
 		}
-		_, err = oleutil.CallMethod(lnk, "Save")
+		_, err = oleutil.CallMethod(shortcut, "Save")
 		return err
 	})
 }
