@@ -1,0 +1,5 @@
+**/repoint-symlink
+**/dist
+**/bin
+**/.vscode/bookmarks.json
+**/__pycache__
