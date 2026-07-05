@@ -97,13 +97,20 @@ Positional (all optional):
   FROM    --from value (regex, or literal with -F)
   TO      --to value (replacement template)
 
-Filters (select which links to act on, matched against the link's own path;
-multiples of one kind OR together, different kinds AND):
+Filters (select which links to act on, matched against the link's own path).
+Every filter is one rule in an ordered pipeline - their order matters:
   --inc[lude]=REGEX   keep links whose path matches (repeatable)
   --exc[lude]=REGEX   drop links whose path matches (repeatable)
   --name=GLOB         keep links whose basename matches glob (case-sensitive)
   --iname=GLOB        same, case-insensitive
+  --wholename=GLOB    keep links whose whole path matches glob (case-sensitive)
+  --iwholename=GLOB   same, case-insensitive
   --max-depth=N       limit recursion depth (1 = direct children)
+
+Rules run left to right from "everything kept". A keep-rule (include/name/
+iname/wholename/iwholename) after another keep-rule (or first) narrows the set;
+after an --exclude it can expand it, bringing dropped links back. --exclude only
+ever narrows. Globs are find-style ('*' spans '/'); quote them.
 
 Edit (what to do with the target each matched link points to):
   --from=REGEX        pattern to match in the target (PCRE-level; (?i) etc.)
@@ -141,6 +148,12 @@ func printExamples() {
   # Only *.conf links, skip anything under a 'backup' dir
   %s . --iname='*.conf' --exc='/backup/' --from='v1' --to='v2'
 
+  # Whole-path glob (find style): links anywhere under an 'etc' dir
+  %s / --wholename='*/etc/*'
+
+  # Order matters: exclude a subtree, then bring one branch back in
+  %s /srv --inc='/srv/' --exc='/srv/vendor/' --inc='/srv/vendor/keep/'
+
   # Regex capture: rewrite /opt/app-1.2.3 -> /opt/app/1.2.3
   %s /srv --from='/opt/app-(\d+\.\d+\.\d+)' --to='/opt/app/$1'
 
@@ -152,5 +165,5 @@ func printExamples() {
 
   # Just list every symlink two levels deep
   %s /srv --max-depth=2
-`, appName, appName, appName, appName, appName, appName, appName, appName)
+`, appName, appName, appName, appName, appName, appName, appName, appName, appName, appName)
 }

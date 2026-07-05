@@ -37,19 +37,35 @@ Find symlinks anywhere under a folder and rewrite where they point. Filter which
 
 ## Why
 
-Moving a directory, renaming a mount, or restructuring a tree leaves a scatter of symlinks pointing at the old location. Fixing them by hand is tedious and error-prone. `repoint-symlink` finds them all and repoints them in one pass, with a dry run to check first.
+Moving a directory, renaming a mount, or restructuring a tree leaves a scatter of symlinks pointing at the old location. Fixing them by hand is tedious and error-prone. `repoint-symlink` finds them all and repoints them in one pass - with an optional dry run to check first.
 
 ## Features
 
-- Recursive search from a start folder (default: current directory), never following directory symlinks, so it is loop-safe.
-- Select links with repeatable `--include` / `--exclude` regexes (PCRE-level: lookaround, backreferences, inline `(?i)` case flag) and `--name` / `--iname` filename globs.
-- Rewrite targets with a regex `--from` and a template `--to` (`$1`, `${name}` capture references), or a literal replace with `-F`.
-- Applies by default; `--dry-run` previews every before/after with nothing written.
+- Recursive search from a start folder (default: current directory).
+
+- Select links by name, via one or more of:
+	- `--name='*Name*'` / `--iname='*name*'` filename wildcards.
+	- `--wholename='*/Path*/*name'` / `--iwholename='*/path*/*name'` full-path wildcards.
+	- Repeatable, nested `--include=""` / `--exclude=""` regexes:
+		- The first `--include`, or following only other `--include`s, can only narrow results for a given path or leave the same, but not expand.
+		- But an `--include` following an `--exclude` can actually *expand* the resulting list of files, by bringing previously excluded matches back in, for example further down a filesystem hierarchy.
+		- `--exclude` can only ever narrow a result set or leave it the same.
+		- The regex engine is PCRE-level - supporting lookaround, backreferences, inline `(?i)` case flag, etc.
+
+- Rewrite targets with a regex `--from='findstr'` and `--to='replacestr'`.
+	- Including `$1`, `${name}` capture references.
+	- Literal replace with `-F`.
+
+- `--dry-run` previews every before/after with nothing written.
+	- By default, renames are applied without preview.
+
+- Doesn't follow directory symlinks (without a flag), so it is loop-safe.
+
 - Cross-platform. On Windows it also repoints NTFS junctions and `.lnk` shortcut targets.
 
 ## Usage
 
-```
+```bash
 repoint-symlink [START] [FROM] [TO] [options]
 ```
 
@@ -57,15 +73,23 @@ repoint-symlink [START] [FROM] [TO] [options]
 
 ### Filters
 
-Filters select which links to act on and match against the link's own path. Multiples of one kind OR together; different kinds AND.
+Filters select which links to act on and match against the link's own path. Every filter is one rule in a single ordered pipeline, evaluated left to right from "everything kept" - so their order on the command line matters:
+
+- A keep-rule (`--include` / `--name` / `--iname` / `--wholename` / `--iwholename`) that follows another keep-rule, or is first, **narrows** the set (result AND match).
+- A keep-rule that follows an `--exclude` can **expand** the set (result OR match), bringing back links a previous exclude had dropped - for example a single branch further down a hierarchy.
+- `--exclude` only ever **narrows** (result AND NOT match).
+
+Globs are [`find`](https://man7.org/linux/man-pages/man1/find.1.html)-style: `*` and `?` span `/` (so `--wholename` behaves like find's `-wholename`), and patterns must be quoted so the shell doesn't expand them. Regexes are PCRE-level.
 
 | Flag | Matches
 | :-- | :--
-| `--inc[lude]=REGEX` | keep links whose path matches (repeatable)
-| `--exc[lude]=REGEX` | drop links whose path matches (repeatable)
-| `--name=GLOB`       | keep links whose basename matches, case-sensitive
-| `--iname=GLOB`      | same, case-insensitive
-| `--max-depth=N`     | limit recursion depth (1 = direct children)
+| `--inc[lude]=REGEX` | Keep links whose path matches (repeatable; narrows, or expands after an `--exclude`).
+| `--exc[lude]=REGEX` | Drop links whose path matches (repeatable; only narrows).
+| `--name=GLOB`       | Keep links whose basename matches, case-sensitive.
+| `--iname=GLOB`      | Same, case-insensitive.
+| `--wholename=GLOB`  | Keep links whose whole path matches, case-sensitive.
+| `--iwholename=GLOB` | Same, case-insensitive.
+| `--max-depth=N`     | Limit recursion depth (1 = direct children).
 
 ### Editing the target
 

@@ -15,9 +15,9 @@
 ##	History: At bottom of script.
 
 ##	Copyright © 2026 Jim Collier (ID: 1cv◂‡Vᛦ)
-##	Licensed under The MIT License (MIT). Full text at:
-##		https://mit-license.org/
-##	SPDX-License-Identifier: MIT
+##	Licensed under the GNU General Public License v2.0 or later. Full text at:
+##		https://spdx.org/licenses/GPL-2.0-or-later.html
+##	SPDX-License-Identifier: GPL-2.0-or-later
 
 
 set -Eeuo pipefail
@@ -97,6 +97,32 @@ T="$(mktree)"
 "${EXE}" "${T}" --iname='*.conf' --exc='/backup/' --from='/mnt/old' --to='/mnt/new' >/dev/null
 assert_target "${T}/a/one.conf"      "/mnt/new/data" "*.conf matched"
 assert_target "${T}/backup/old.conf" "/mnt/old/z"    "excluded backup untouched"
+rm -rf "${T}"
+
+section "Integration: ordered filters - include after exclude expands"
+T="$(mktree)"
+ln -s /mnt/old/w "${T}/a/b/other.conf"   # a second link under a/b to prove exclusion
+out="$("${EXE}" "${T}" --inc='/a/' --exc='/a/b/' --inc='/a/b/two')"
+assert_grep "${out}"   "/a/one.conf"   "under /a/ but not /a/b/ stays in"
+assert_grep "${out}"   "/a/b/two.conf" "third include brings two.conf back"
+if grep -qF '/a/b/other.conf' <<<"${out}"; then fail "excluded other.conf wrongly back"; else pass "other.conf stays excluded"; fi
+if grep -qF '/backup/old.conf' <<<"${out}"; then fail "backup wrongly included"; else pass "backup never included"; fi
+rm -rf "${T}"
+
+section "Integration: ordered filters - two includes narrow (AND)"
+T="$(mktree)"
+out="$("${EXE}" "${T}" --inc='/a/' --inc='two')"
+assert_grep "${out}" "/a/b/two.conf" "matches both includes"
+if grep -qF '/a/one.conf' <<<"${out}"; then fail "one.conf should be narrowed out"; else pass "consecutive includes AND, not OR"; fi
+rm -rf "${T}"
+
+section "Integration: wholename spans '/', name is basename-only"
+T="$(mktree)"
+out="$("${EXE}" "${T}" --wholename='*/a/b/*')"
+assert_grep "${out}" "/a/b/two.conf" "wholename '*' spans '/'"
+if grep -qF '/a/one.conf' <<<"${out}"; then fail "wholename matched wrong path"; else pass "wholename anchored to the subtree"; fi
+out="$("${EXE}" "${T}" --name='*/a/b/*')"
+if grep -qF 'two.conf' <<<"${out}"; then fail "name should not see '/' in basename"; else pass "name matches basename only"; fi
 rm -rf "${T}"
 
 section "Integration: regex capture template"
