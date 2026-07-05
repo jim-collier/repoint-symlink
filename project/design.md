@@ -40,7 +40,7 @@ Everything is `package main` under `source/`:
 | :-- | :--
 | `main.go`         | entry, version, help/examples, orchestration
 | `args.go`         | custom arg parser (prefix abbreviation, `=`/space values, positional 1/2/3)
-| `filter.go`       | compile + apply include/exclude/name/iname selection
+| `filter.go`       | compile + apply the ordered selection pipeline (include/exclude regex, name/iname/wholename/iwholename globs)
 | `walk.go`         | recursive traversal collecting `LinkEntry` (no dir-symlink follow)
 | `link.go`         | shared `LinkEntry` / `LinkKind` types
 | `link_unix.go`    | classify + read/write symlinks (`!windows`)
@@ -62,5 +62,6 @@ See `README.md` for the full flag list. `START`/`FROM`/`TO` are positional alias
 - **Apply by default**, `--dry-run` opt-in preview. Destructive-but-reversible; a dry run is one flag away.
 - **`--from` is a regex, `--to` a template**; `-F` switches to literal replace-all.
 - **Filters match the link's own path**, not its target - `--from`/`--to` already select by target implicitly (a link whose target does not match is left unchanged). Optional target-matching filters are a backlog item.
-- **Include = OR, exclude = subtract; different filter kinds AND.** Standard grep-style mental model.
+- **Ordered filter pipeline.** Every selection flag (`--include`/`--exclude` regex, `--[i]name`/`--[i]wholename` globs) is one rule, kept in command-line order. Walking left to right from "everything kept": a keep-rule after another keep-rule (or first) narrows (AND); a keep-rule after an `--exclude` can expand (OR), bringing dropped links back; `--exclude` only narrows (AND NOT). Chosen over the simpler grep-style "include=OR, exclude=subtract" so an include can re-admit a single branch under an excluded subtree.
+- **Globs are find-style**, translated to an anchored regex where `*`/`?` span `/` (matches find's `-wholename`); `--[i]wholename` matches the whole (slash-normalized) path, `--[i]name` the basename.
 - **Symlink rewrite is atomic on POSIX** (create-beside + rename). Windows symlinks are remove+recreate; junctions overwrite the reparse buffer in place; `.lnk` targets are set via the shell object.

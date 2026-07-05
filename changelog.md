@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Initial working tool: recursively find symlinks under a start folder and repoint their targets.
-- Filters: repeatable `--include`/`--exclude` (PCRE-level regex) and `--name`/`--iname` globs; `--max-depth`.
+- Filters: repeatable `--include`/`--exclude` (PCRE-level regex), `--name`/`--iname` basename globs, `--wholename`/`--iwholename` whole-path globs; `--max-depth`. Every filter is one rule in a single ordered pipeline - keep-rules narrow, but a keep-rule after an `--exclude` can expand the set; globs are find-style (`*` spans `/`).
 - Regex `--from` + template `--to` (`$1`, `${name}`); literal replace with `-F`.
 - Apply-by-default with `--dry-run` preview; list-only mode when no `--from`.
 - Windows: NTFS junction and `.lnk` shortcut targets in addition to symlinks (built and cross-compiled, pending run-test on real Windows).

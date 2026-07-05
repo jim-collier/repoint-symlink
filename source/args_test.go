@@ -35,12 +35,19 @@ func TestFlagBeatsPositional(t *testing.T) {
 }
 
 func TestPrefixAbbrev(t *testing.T) {
-	o := mustParse(t, ".", "--inc=a", "--incl=b", "--exc=c")
-	if len(o.includes) != 2 || o.includes[0] != "a" || o.includes[1] != "b" {
-		t.Fatalf("include abbrev/accumulate wrong: %+v", o.includes)
+	// Abbreviations resolve, and rules keep command-line order + kind.
+	o := mustParse(t, ".", "--inc=a", "--incl=b", "--exc=c", "--who=d", "--iwh=e")
+	want := []selRule{
+		{selInclude, "a"}, {selInclude, "b"}, {selExclude, "c"},
+		{selWholename, "d"}, {selIWholename, "e"},
 	}
-	if len(o.excludes) != 1 || o.excludes[0] != "c" {
-		t.Fatalf("exclude abbrev wrong: %+v", o.excludes)
+	if len(o.rules) != len(want) {
+		t.Fatalf("rule count wrong: %+v", o.rules)
+	}
+	for i, r := range want {
+		if o.rules[i] != r {
+			t.Fatalf("rule %d = %+v, want %+v", i, o.rules[i], r)
+		}
 	}
 }
 
