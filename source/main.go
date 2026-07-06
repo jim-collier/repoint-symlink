@@ -42,7 +42,7 @@ func run(argv []string) int {
 		return 0
 	}
 
-	filt, err := compileFilters(opts)
+	filt, targetFilt, err := compileFilters(opts)
 	if err != nil {
 		errorf("%v", err)
 		return 2
@@ -70,7 +70,7 @@ func run(argv []string) int {
 		return 1
 	}
 
-	_, failed := process(opts, filt, rp, entries)
+	_, failed := process(opts, filt, targetFilt, rp, entries)
 	if failed {
 		return 1
 	}
@@ -102,6 +102,8 @@ Every filter is one rule in an ordered pipeline - their order matters:
   --inc[lude]=REGEX     keep only links whose path also matches (narrows)
   --exc[lude]=REGEX     drop links whose path matches (subtracts)
   --re-inc[lude]=REGEX  re-add links matching this from the original scan (widens)
+  --inc-target=REGEX    keep only links whose current target matches (narrows)
+  --exc-target=REGEX    drop links whose current target matches (subtracts)
   --name=GLOB           keep only links whose basename matches glob (case-sensitive)
   --iname=GLOB          same, case-insensitive
   --wholename=GLOB      keep only links whose whole path matches glob (case-sensitive)
@@ -114,6 +116,8 @@ Each flag has one fixed effect, so you can reason left to right one at a time.
 --exclude subtracts. Both only ever shrink the set. --re-include is the only
 widener: it re-admits any link from the original scan matching its regex, even
 one a prior --exclude dropped. Globs are find-style ('*' spans '/'); quote them.
+--inc-target/--exc-target apply the same narrow/subtract logic to each link's
+current target (where it points) instead of its own path.
 
 Edit (what to do with the target each matched link points to):
   --from=REGEX        pattern to match in the target (PCRE-level; (?i) etc.)

@@ -57,10 +57,10 @@ func (r *repointer) transform(target string) (string, error) {
 
 // process finds, reports, and (unless dry-run) rewrites matching links.
 // Returns the number of links changed and whether any write failed.
-func process(opts *options, filt *filter.Set, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
+func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
 	matched := 0
 	for _, entry := range entries {
-		if !filt.Selects(entry.Path) {
+		if !filt.Selects(entry.Path) || !targetFilt.Selects(entry.Target) {
 			continue
 		}
 		matched++
