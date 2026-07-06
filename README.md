@@ -42,6 +42,7 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 ## Features
 
 - Recursive search from a start folder (default: current directory).
+	- `--max-depth` caps recursion; `--no-cross-device` stays on one filesystem (`find -xdev` style).
 
 - Select which links to touch, matched against the link's own path.
 	- Name and path globs: `--name` / `--iname`, `--wholename` / `--iwholename`.
@@ -107,6 +108,7 @@ Globs vs regexes:
 | `--wholename=GLOB`     | Keep only links whose whole path matches, case-sensitive.
 | `--iwholename=GLOB`    | Same, case-insensitive.
 | `--max-depth=N`        | Limit recursion depth (1 = direct children).
+| `--no-cross-device`    | Don't descend into directories on another filesystem.
 
 ### Editing the target
 

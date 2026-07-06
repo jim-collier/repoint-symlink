@@ -64,7 +64,7 @@ func run(argv []string) int {
 		return 1
 	}
 
-	entries, err := collectLinks(opts.dir, opts.maxDepth)
+	entries, err := collectLinks(opts.dir, opts.maxDepth, opts.noCrossDev)
 	if err != nil {
 		errorf("walk failed: %v", err)
 		return 1
@@ -107,6 +107,7 @@ Every filter is one rule in an ordered pipeline - their order matters:
   --wholename=GLOB      keep only links whose whole path matches glob (case-sensitive)
   --iwholename=GLOB     same, case-insensitive
   --max-depth=N         limit recursion depth (1 = direct children)
+  --no-cross-device     don't descend into dirs on another filesystem
 
 Each flag has one fixed effect, so you can reason left to right one at a time.
 --include and the name/wholename globs narrow (keep only what also matches);

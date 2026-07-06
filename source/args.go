@@ -55,16 +55,17 @@ type selRule struct {
 
 // options is the parsed command line.
 type options struct {
-	dir      string    // start folder (positional 1, default ".")
-	from     string    // regex (or literal with -F); positional 2
-	to       string    // replacement template; positional 3
-	fromSet  bool      // was --from / positional 2 given? (enables edit mode)
-	rules    []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
-	maxDepth int       // --max-depth, -1 = unlimited
-	literal  bool      // -F: treat --from as a literal string
-	dryRun   bool      // -n: preview, do not write
-	verbose  bool      // -v
-	quiet    bool      // -q
+	dir        string    // start folder (positional 1, default ".")
+	from       string    // regex (or literal with -F); positional 2
+	to         string    // replacement template; positional 3
+	fromSet    bool      // was --from / positional 2 given? (enables edit mode)
+	rules      []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
+	maxDepth   int       // --max-depth, -1 = unlimited
+	noCrossDev bool      // --no-cross-device: don't descend onto other filesystems
+	literal    bool      // -F: treat --from as a literal string
+	dryRun     bool      // -n: preview, do not write
+	verbose    bool      // -v
+	quiet      bool      // -q
 	// terminal actions
 	showVersion  bool
 	showHelp     bool
@@ -77,7 +78,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"no-cross-device", "dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
 
 func parseArgs(argv []string) (*options, error) {
 	opts := &options{dir: ".", maxDepth: -1}
@@ -226,6 +227,8 @@ func boolValue(canon, val string, hasVal bool) (bool, error) {
 
 func setBool(opts *options, canon string, enabled bool) {
 	switch canon {
+	case "no-cross-device":
+		opts.noCrossDev = enabled
 	case "dry-run":
 		opts.dryRun = enabled
 	case "literal":

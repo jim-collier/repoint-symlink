@@ -38,7 +38,7 @@ func targetsByBase(entries []LinkEntry) map[string]string {
 
 func TestCollectAll(t *testing.T) {
 	root := buildTree(t)
-	entries, err := collectLinks(root, -1)
+	entries, err := collectLinks(root, -1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,9 +53,27 @@ func TestCollectAll(t *testing.T) {
 	}
 }
 
+// On a single filesystem --no-cross-device must be a no-op: every link the plain
+// walk finds is still found. (A real cross-device prune needs two mounts, which
+// a unit test can't fabricate; the integration harness covers that shape.)
+func TestNoCrossDeviceSingleFS(t *testing.T) {
+	root := buildTree(t)
+	if dev, ok := statDevice(root); !ok || dev == 0 {
+		t.Skip("device id unavailable on this platform")
+	}
+	entries, err := collectLinks(root, -1, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := targetsByBase(entries)
+	if len(got) != 2 || got["one"] == "" || got["two"] == "" {
+		t.Fatalf("no-cross-device dropped links on one fs: %+v", got)
+	}
+}
+
 func TestCollectMaxDepth(t *testing.T) {
 	root := buildTree(t)
-	entries, err := collectLinks(root, 2) // exclude the depth-3 link
+	entries, err := collectLinks(root, 2, false) // exclude the depth-3 link
 	if err != nil {
 		t.Fatal(err)
 	}
