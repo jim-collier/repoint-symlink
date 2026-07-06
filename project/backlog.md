@@ -54,8 +54,6 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
-- 🔘 `--follow-links` to descend into directory symlinks (with cycle detection).
-
 - 🔘 `-0` / `--print0` NUL-separated output for scripting.
 
 - 🔘 `--renormal-relative` / `--renormal-absolute`: Optional re-normalization of rewritten targets. These can be used with or without renaming options.
@@ -90,6 +88,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ `-L` / `--follow-links`: descend into directory symlinks during the walk, loop-safe via a visited-canonical-path set (each directory walked once). Default walk still never follows.
 
 - ✅ `--inc-target` / `--exc-target`: select links by their current target (where they point), not just their own path. Reuses the filter engine as a second ordered pipeline over the target. `--inc`/`--exc` short spellings preserved via an exact-alias table.
 

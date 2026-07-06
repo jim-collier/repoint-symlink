@@ -70,6 +70,7 @@ type options struct {
 	targetRules []selRule // --inc-target/--exc-target (match the current target), in order
 	maxDepth    int       // --max-depth, -1 = unlimited
 	noCrossDev  bool      // --no-cross-device: don't descend onto other filesystems
+	followLinks bool      // -L, --follow-links: descend into directory symlinks
 	literal     bool      // -F: treat --from as a literal string
 	dryRun      bool      // -n: preview, do not write
 	verbose     bool      // -v
@@ -86,7 +87,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "inc-target", "exc-target", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"no-cross-device", "dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"no-cross-device", "follow-links", "dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
 
 // flagAliases are exact short spellings that must keep resolving even though a
 // longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
@@ -175,6 +176,8 @@ func parseShort(arg string, opts *options) error {
 			opts.dryRun = true
 		case 'F':
 			opts.literal = true
+		case 'L':
+			opts.followLinks = true
 		case 'v':
 			opts.verbose = true
 		case 'q':
@@ -248,6 +251,8 @@ func setBool(opts *options, canon string, enabled bool) {
 	switch canon {
 	case "no-cross-device":
 		opts.noCrossDev = enabled
+	case "follow-links":
+		opts.followLinks = enabled
 	case "dry-run":
 		opts.dryRun = enabled
 	case "literal":
