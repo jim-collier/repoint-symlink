@@ -19,12 +19,12 @@ type repointer struct {
 	fromRE   *regexp2.Regexp
 	fromLit  string
 	to       string
-	fixed    bool
+	literal  bool
 	editMode bool
 }
 
 func buildRepointer(opts *options) (*repointer, error) {
-	rp := &repointer{to: opts.to, fixed: opts.fixed}
+	rp := &repointer{to: opts.to, literal: opts.literal}
 	if !opts.fromSet || opts.from == "" {
 		if opts.fromSet && opts.from == "" {
 			warnf("--from is empty; listing matches only")
@@ -32,7 +32,7 @@ func buildRepointer(opts *options) (*repointer, error) {
 		return rp, nil // list-only
 	}
 	rp.editMode = true
-	if opts.fixed {
+	if opts.literal {
 		rp.fromLit = opts.from
 		return rp, nil
 	}
@@ -48,7 +48,7 @@ func (r *repointer) transform(target string) (string, error) {
 	if !r.editMode {
 		return target, nil
 	}
-	if r.fixed {
+	if r.literal {
 		return strings.ReplaceAll(target, r.fromLit, r.to), nil
 	}
 	return r.fromRE.Replace(target, r.to, -1, -1)

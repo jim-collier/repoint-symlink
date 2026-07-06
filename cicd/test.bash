@@ -138,7 +138,7 @@ T="$(mktree)"
 assert_target "${T}/a/app" "/opt/app/1.2.3" "capture group rewritten"
 rm -rf "${T}"
 
-section "Integration: fixed (-F) literal replace"
+section "Integration: literal (-F) replace"
 T="$(mktree)"
 ln -s '/data/a.b.c' "${T}/lit"
 "${EXE}" "${T}" -F --name='lit' --from='a.b.c' --to='X' >/dev/null

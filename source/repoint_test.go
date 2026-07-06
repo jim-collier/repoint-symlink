@@ -41,14 +41,14 @@ func TestCaseInsensitiveInline(t *testing.T) {
 	}
 }
 
-func TestFixedLiteral(t *testing.T) {
-	o := &options{fromSet: true, fixed: true, from: `a.b.c`, to: `X`}
+func TestLiteralReplace(t *testing.T) {
+	o := &options{fromSet: true, literal: true, from: `a.b.c`, to: `X`}
 	if got := xform(t, o, "/data/a.b.c/a.b.c"); got != "/data/X/X" {
-		t.Fatalf("fixed literal: %q", got)
+		t.Fatalf("literal replace: %q", got)
 	}
-	// dot must NOT act as regex wildcard in fixed mode.
+	// dot must NOT act as regex wildcard in literal mode.
 	if got := xform(t, o, "/data/axbxc"); got != "/data/axbxc" {
-		t.Fatalf("fixed should not match wildcard: %q", got)
+		t.Fatalf("literal should not match wildcard: %q", got)
 	}
 }
 

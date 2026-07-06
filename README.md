@@ -43,18 +43,12 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 
 - Recursive search from a start folder (default: current directory).
 
-- Select links by name, via one or more of:
-	- `--name='*Name*'` / `--iname='*name*'` filename wildcards.
-	- `--wholename='*/Path*/*name'` / `--iwholename='*/path*/*name'` full-path wildcards.
-	- Repeatable, nested `--include=""` / `--exclude=""` / `--re-include=""` regexes, evaluated left to right so you can reason about them one at a time:
-		- `--include` (and the name/wholename globs) only ever *narrow* the set - keep what also matches.
-		- `--exclude` only ever *subtracts*.
-		- `--re-include` is the one *widener*: it re-admits any link from the original scan matching its regex, even one a previous `--exclude` dropped (for example rescuing a single branch further down a hierarchy).
-		- The regex engine is PCRE-level - supporting lookaround, backreferences, inline `(?i)` case flag, etc.
+- Select which links to touch with name/path globs (`--name`/`--iname`, `--wholename`/`--iwholename`) and repeatable `--include` / `--exclude` / `--re-include` regexes, evaluated left to right so you reason about them one at a time (see [Filters](#filters)). The regex engine is PCRE-level - lookaround, backreferences, inline `(?i)` case flag, etc.
 
 - Rewrite targets with a regex `--from='findstr'` and `--to='replacestr'`.
-	- Including `$1`, `${name}` capture references.
-	- Literal replace with `-F`.
+	- `$1`, `${name}` capture references in `--to`.
+	- `-F` / `--literal` matches `--from` as a plain literal instead of a regex, replacing every occurrence.
+		- Handy for Windows paths, where `\` and `:` would otherwise be regex-special and need escaping - e.g. `-F --from='C:\Old' --to='C:\New'` just works.
 
 - `--dry-run` previews every before/after with nothing written.
 	- By default, renames are applied without preview.
@@ -98,7 +92,7 @@ Globs are [`find`](https://man7.org/linux/man-pages/man1/find.1.html)-style: `*`
 | :-- | :--
 | `--from=REGEX`  | pattern to match inside each target
 | `--to=TEMPLATE` | replacement; `$1` / `${name}` reference `--from` captures
-| `-F`, `--fixed` | treat `--from` as a literal string (replace all occurrences)
+| `-F`, `--literal` | treat `--from` as a plain literal, not a regex (replace all occurrences)
 | `-n`, `--dry-run` | preview; write nothing
 
 ## Examples

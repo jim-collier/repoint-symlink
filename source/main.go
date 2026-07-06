@@ -117,7 +117,7 @@ one a prior --exclude dropped. Globs are find-style ('*' spans '/'); quote them.
 Edit (what to do with the target each matched link points to):
   --from=REGEX        pattern to match in the target (PCRE-level; (?i) etc.)
   --to=TEMPLATE       replacement; $1 / ${name} reference --from's captures
-  -F, --fixed         treat --from as a literal string (replace all)
+  -F, --literal       treat --from as a plain literal, not a regex (replace all)
   -n, --dry-run       show what would change; write nothing
 
 With no --from, matching links are just listed. Regex is PCRE-level: lookaround,
