@@ -52,9 +52,9 @@ In each section, items are listed approximately from newest to oldest.
 
 ### New features and enhancements
 
-- 🔘 `--no-cross-dev[ice]`: Don't cross underlying filesystem devices (e.g. done with tools like bind mount).
+- 🔘 `--no-cross-dev[ice]`: Don't cross underlying filesystem devices.
 
-- 🔘 `--inc-target` / `--exc-target`: Optional target-matching filters to select links by where they currently point, not just their own path.
+- 🔘 `--inc-target` / `--exc-target`: Optional *target*-matching regex filters to select links by where they currently point, not just their own path.
 
 - 🔘 `--follow-links` to descend into directory symlinks (with cycle detection).
 
