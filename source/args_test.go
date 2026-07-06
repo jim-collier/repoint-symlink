@@ -51,6 +51,20 @@ func TestPrefixAbbrev(t *testing.T) {
 	}
 }
 
+// --inc-target/--exc-target land in their own pipeline, and adding them must not
+// break the --inc/--exc short spellings (kept working by the alias table).
+func TestTargetFilterFlags(t *testing.T) {
+	o := mustParse(t, ".", "--inc=a", "--exc=b", "--inc-target=/mnt/old/", "--exc-t=/skip/")
+	wantPath := []selRule{{selInclude, "a"}, {selExclude, "b"}}
+	if len(o.rules) != 2 || o.rules[0] != wantPath[0] || o.rules[1] != wantPath[1] {
+		t.Fatalf("path rules wrong: %+v", o.rules)
+	}
+	wantTgt := []selRule{{selIncTarget, "/mnt/old/"}, {selExcTarget, "/skip/"}}
+	if len(o.targetRules) != 2 || o.targetRules[0] != wantTgt[0] || o.targetRules[1] != wantTgt[1] {
+		t.Fatalf("target rules wrong: %+v", o.targetRules)
+	}
+}
+
 func TestAmbiguousAndUnknown(t *testing.T) {
 	if _, err := parseArgs([]string{"--ex"}); err == nil {
 		t.Fatal("expected --ex ambiguous (exclude vs examples)")

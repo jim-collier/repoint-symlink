@@ -16,16 +16,19 @@ import (
 type selKind int
 
 const (
-	selInclude    selKind = iota // --include REGEX (narrows)
+	selInclude    selKind = iota // --include REGEX (narrows the link's own path)
 	selExclude                   // --exclude REGEX (subtracts)
 	selReInclude                 // --re-include REGEX (re-admits from the original scan)
+	selIncTarget                 // --inc-target REGEX (narrows by the current target)
+	selExcTarget                 // --exc-target REGEX (subtracts by the current target)
 	selName                      // --name GLOB, basename, case-sensitive (narrows)
 	selIName                     // --iname GLOB, basename, case-insensitive (narrows)
 	selWholename                 // --wholename GLOB, full path, case-sensitive (narrows)
 	selIWholename                // --iwholename GLOB, full path, case-insensitive (narrows)
 )
 
-// isGlob reports whether the rule is a find-style glob (vs a regex).
+// isGlob reports whether the rule is a find-style glob (vs a regex). The target
+// rules (selIncTarget/selExcTarget) sort before selName, so they stay non-globs.
 func (k selKind) isGlob() bool { return k >= selName }
 
 func (k selKind) flag() string {
@@ -36,6 +39,10 @@ func (k selKind) flag() string {
 		return "exclude"
 	case selReInclude:
 		return "re-include"
+	case selIncTarget:
+		return "inc-target"
+	case selExcTarget:
+		return "exc-target"
 	case selName:
 		return "name"
 	case selIName:
@@ -55,17 +62,18 @@ type selRule struct {
 
 // options is the parsed command line.
 type options struct {
-	dir        string    // start folder (positional 1, default ".")
-	from       string    // regex (or literal with -F); positional 2
-	to         string    // replacement template; positional 3
-	fromSet    bool      // was --from / positional 2 given? (enables edit mode)
-	rules      []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
-	maxDepth   int       // --max-depth, -1 = unlimited
-	noCrossDev bool      // --no-cross-device: don't descend onto other filesystems
-	literal    bool      // -F: treat --from as a literal string
-	dryRun     bool      // -n: preview, do not write
-	verbose    bool      // -v
-	quiet      bool      // -q
+	dir         string    // start folder (positional 1, default ".")
+	from        string    // regex (or literal with -F); positional 2
+	to          string    // replacement template; positional 3
+	fromSet     bool      // was --from / positional 2 given? (enables edit mode)
+	rules       []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
+	targetRules []selRule // --inc-target/--exc-target (match the current target), in order
+	maxDepth    int       // --max-depth, -1 = unlimited
+	noCrossDev  bool      // --no-cross-device: don't descend onto other filesystems
+	literal     bool      // -F: treat --from as a literal string
+	dryRun      bool      // -n: preview, do not write
+	verbose     bool      // -v
+	quiet       bool      // -q
 	// terminal actions
 	showVersion  bool
 	showHelp     bool
@@ -77,8 +85,16 @@ type options struct {
 // but an exact spelling always wins regardless of length (so --to works).
 const minPrefix = 3
 
-var valueFlags = []string{"include", "exclude", "re-include", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
+var valueFlags = []string{"include", "exclude", "re-include", "inc-target", "exc-target", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
 var boolFlags = []string{"no-cross-device", "dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
+
+// flagAliases are exact short spellings that must keep resolving even though a
+// longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
+// between --include and --inc-target). An exact alias wins before prefix logic.
+var flagAliases = map[string]string{
+	"inc": "include",
+	"exc": "exclude",
+}
 
 func parseArgs(argv []string) (*options, error) {
 	opts := &options{dir: ".", maxDepth: -1}
@@ -182,6 +198,9 @@ func resolveLong(name string) (string, error) {
 			return flag, nil
 		}
 	}
+	if canon, ok := flagAliases[name]; ok {
+		return canon, nil
+	}
 	if len(name) < minPrefix {
 		return "", fmt.Errorf("unknown flag --%s", name)
 	}
@@ -254,6 +273,10 @@ func setValue(opts *options, canon, val string, seenFrom, seenTo *bool) error {
 		opts.rules = append(opts.rules, selRule{selExclude, val})
 	case "re-include":
 		opts.rules = append(opts.rules, selRule{selReInclude, val})
+	case "inc-target":
+		opts.targetRules = append(opts.targetRules, selRule{selIncTarget, val})
+	case "exc-target":
+		opts.targetRules = append(opts.targetRules, selRule{selExcTarget, val})
 	case "name":
 		opts.rules = append(opts.rules, selRule{selName, val})
 	case "iname":

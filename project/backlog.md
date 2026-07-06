@@ -54,8 +54,6 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
-- 🔘 `--inc-target` / `--exc-target`: Optional *target*-matching regex filters to select links by where they currently point, not just their own path.
-
 - 🔘 `--follow-links` to descend into directory symlinks (with cycle detection).
 
 - 🔘 `-0` / `--print0` NUL-separated output for scripting.
@@ -92,6 +90,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ `--inc-target` / `--exc-target`: select links by their current target (where they point), not just their own path. Reuses the filter engine as a second ordered pipeline over the target. `--inc`/`--exc` short spellings preserved via an exact-alias table.
 
 - ✅ `--no-cross-device`: don't descend into directories on another filesystem (`find -xdev` style). Per-OS device probe (POSIX `st_dev`, Windows volume serial); prunes at directory boundaries during the walk.
 

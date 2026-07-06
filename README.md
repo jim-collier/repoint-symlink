@@ -44,9 +44,10 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 - Recursive search from a start folder (default: current directory).
 	- `--max-depth` caps recursion; `--no-cross-device` stays on one filesystem (`find -xdev` style).
 
-- Select which links to touch, matched against the link's own path.
+- Select which links to touch, by the link's own path or by where it points.
 	- Name and path globs: `--name` / `--iname`, `--wholename` / `--iwholename`.
 	- Repeatable `--include` / `--exclude` / `--re-include` regexes.
+	- `--inc-target` / `--exc-target` select by the link's current target instead of its own path.
 	- Flags apply left to right, so you reason about them one at a time (see [Filters](#filters)).
 	- PCRE-level regex: lookaround, backreferences, inline `(?i)` case flag.
 
@@ -72,7 +73,7 @@ repoint-symlink [START] [FROM] [TO] [options]
 
 ### Filters
 
-Filters pick which links to act on. Each one matches the link's own path, not its target.
+Filters pick which links to act on. Most match the link's own path; `--inc-target` / `--exc-target` match its current target (where it points). The two run as separate pipelines and a link must satisfy both.
 
 How the pipeline reads:
 
@@ -103,6 +104,8 @@ Globs vs regexes:
 | `--inc[lude]=REGEX`    | Keep only links whose path also matches (repeatable; narrows).
 | `--exc[lude]=REGEX`    | Drop links whose path matches (repeatable; subtracts).
 | `--re-inc[lude]=REGEX` | Re-add links matching this from the original scan (repeatable; widens).
+| `--inc-target=REGEX`   | Keep only links whose current target matches (repeatable; narrows).
+| `--exc-target=REGEX`   | Drop links whose current target matches (repeatable; subtracts).
 | `--name=GLOB`          | Keep only links whose basename matches, case-sensitive.
 | `--iname=GLOB`         | Same, case-insensitive.
 | `--wholename=GLOB`     | Keep only links whose whole path matches, case-sensitive.
@@ -133,6 +136,9 @@ repoint-symlink . --iname='*.conf' --exc='/backup/' --from='v1' --to='v2'
 
 # Whole-path glob (find style): links anywhere under an 'etc' dir
 repoint-symlink / --wholename='*/etc/*'
+
+# Only links that currently point into /mnt/old (by target, not by their own path)
+repoint-symlink /srv --inc-target='^/mnt/old/' --from='/mnt/old' --to='/mnt/new'
 
 # Drop every .tmp link, then rescue the ones under an 'assets' dir
 repoint-symlink /srv --exc='\.tmp$' --re-inc='/assets/.*\.tmp$'
