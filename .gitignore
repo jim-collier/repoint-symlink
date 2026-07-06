@@ -4,3 +4,10 @@
 **/bin
 **/.vscode/bookmarks.json
 **/__pycache__
+
+# Donation signing key: lives outside the repo (../private/donation_keys/); never
+# let a stray copy land in git. The detached signature (source/donation/donation.sig)
+# IS meant to be tracked.
+donation_ed25519
+donation_ed25519.pub
+donation_keys/
