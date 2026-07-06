@@ -46,7 +46,7 @@ func TestLiteralReplace(t *testing.T) {
 	if got := xform(t, o, "/data/a.b.c/a.b.c"); got != "/data/X/X" {
 		t.Fatalf("literal replace: %q", got)
 	}
-	// dot must NOT act as regex wildcard in literal mode.
+	// dot must not act as a regex wildcard in literal mode.
 	if got := xform(t, o, "/data/axbxc"); got != "/data/axbxc" {
 		t.Fatalf("literal should not match wildcard: %q", got)
 	}

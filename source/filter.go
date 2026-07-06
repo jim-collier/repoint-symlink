@@ -10,27 +10,43 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/dlclark/regexp2"
 )
 
+// reMatchTimeout caps a single regex match so a pathological pattern (one that
+// backtracks catastrophically) fails instead of hanging. Normal patterns finish
+// in microseconds, so this never bites real use. A var, not a const, so tests
+// can dial it down.
+var reMatchTimeout = 5 * time.Second
+
+// compileRE compiles a regexp2 pattern with the match timeout applied.
+func compileRE(pat string, opt regexp2.RegexOptions) (*regexp2.Regexp, error) {
+	re, err := regexp2.Compile(pat, opt)
+	if err != nil {
+		return nil, err
+	}
+	re.MatchTimeout = reMatchTimeout
+	return re, nil
+}
+
 // filters selects which discovered links to act on. Every selection flag
 // (--include/--exclude/--re-include regexes and --[i]name/--[i]wholename globs)
-// is one rule here, kept in command-line order, and matched against the link's
-// own path - --from/--to handle the target side.
+// becomes one rule here, kept in command-line order, and matched against the
+// link's own path. The target side is handled by --from/--to.
 //
-// Each rule has ONE intrinsic effect, independent of its neighbours, so the set
-// can be reasoned about sequentially, one flag at a time:
-//   - --include and the name/wholename globs NARROW: keep = keep AND match.
-//   - --exclude SUBTRACTS: keep = keep AND NOT match.
-//   - --re-include RE-ADMITS from the original scan: keep = keep OR match. It
-//     brings back any link matching it, even one a prior --exclude dropped.
+// Each rule has one fixed effect, independent of its neighbors, so the set reads
+// sequentially, one flag at a time. Include and the name/wholename globs narrow
+// (keep and match). Exclude subtracts (keep and not match). Re-include re-admits
+// from the original scan (keep or match), bringing back even a link a prior
+// exclude dropped. Narrow and subtract only shrink the set; re-include is the
+// only widener. Order still matters: a later narrow or subtract applies to
+// whatever a re-include widened.
 //
-// Narrow and subtract only ever shrink the set; --re-include is the only widener.
-// Order still matters (a later narrow/subtract applies to whatever a re-include
-// widened). Regexes are regexp2 (PCRE-level: lookaround, backrefs, inline (?i));
-// globs are find-style (--wholename == find -wholename), where a '*' spans '/'
-// and patterns should be quoted to survive the shell.
+// Regexes are regexp2 (PCRE-level: lookaround, backrefs, inline (?i)). Globs are
+// find-style, so a '*' spans '/' as with find's -wholename; quote them to
+// survive the shell.
 type filters struct {
 	rules []rule
 }
@@ -75,7 +91,7 @@ func compileFilters(opts *options) (*filters, error) {
 			}
 			r.match = globMatcher(re, onBase)
 		} else {
-			re, err := regexp2.Compile(sr.pat, regexp2.None)
+			re, err := compileRE(sr.pat, regexp2.None)
 			if err != nil {
 				return nil, fmt.Errorf("bad --%s regex %q: %w", sr.kind.flag(), sr.pat, err)
 			}
@@ -128,7 +144,7 @@ func compileGlob(glob string, fold bool) (*regexp2.Regexp, error) {
 	if fold {
 		opt = regexp2.IgnoreCase
 	}
-	return regexp2.Compile(globToRegex(glob), opt)
+	return compileRE(globToRegex(glob), opt)
 }
 
 // globToRegex translates a find-style glob to an anchored regex. Unlike shell

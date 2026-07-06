@@ -12,5 +12,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Filters: repeatable `--include`/`--exclude`/`--re-include` (PCRE-level regex), `--name`/`--iname` basename globs, `--wholename`/`--iwholename` whole-path globs; `--max-depth`. Every filter is one rule in a single ordered pipeline, each with one fixed effect: include and the globs narrow, `--exclude` subtracts, `--re-include` re-admits from the original scan (the only widener). Globs are find-style (`*` spans `/`).
 - Regex `--from` + template `--to` (`$1`, `${name}`); literal replace with `-F` / `--literal`.
 - Apply-by-default with `--dry-run` preview; list-only mode when no `--from`.
+- Regex matching is bounded by a timeout, so a pathological pattern fails instead of hanging.
 - Windows: NTFS junction and `.lnk` shortcut targets in addition to symlinks (built and cross-compiled, pending run-test on real Windows).
 - Cross-compile matrix for linux/macOS/windows on amd64+arm64; Go unit tests and an integration test harness.

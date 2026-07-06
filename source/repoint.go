@@ -36,7 +36,7 @@ func buildRepointer(opts *options) (*repointer, error) {
 		rp.fromLit = opts.from
 		return rp, nil
 	}
-	re, err := regexp2.Compile(opts.from, regexp2.None)
+	re, err := compileRE(opts.from, regexp2.None)
 	if err != nil {
 		return nil, fmt.Errorf("bad --from regex %q: %w", opts.from, err)
 	}
