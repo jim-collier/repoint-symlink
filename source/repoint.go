@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dlclark/regexp2"
+	"github.com/jim-collier/repoint-symlink/filter"
 )
 
 // repointer turns a current target into a new one per --from/--to. In regex
@@ -36,7 +37,7 @@ func buildRepointer(opts *options) (*repointer, error) {
 		rp.fromLit = opts.from
 		return rp, nil
 	}
-	re, err := compileRE(opts.from, regexp2.None)
+	re, err := filter.CompileRegex(opts.from, false)
 	if err != nil {
 		return nil, fmt.Errorf("bad --from regex %q: %w", opts.from, err)
 	}
@@ -56,10 +57,10 @@ func (r *repointer) transform(target string) (string, error) {
 
 // process finds, reports, and (unless dry-run) rewrites matching links.
 // Returns the number of links changed and whether any write failed.
-func process(opts *options, filt *filters, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
+func process(opts *options, filt *filter.Set, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
 	matched := 0
 	for _, entry := range entries {
-		if !filt.selects(entry.Path) {
+		if !filt.Selects(entry.Path) {
 			continue
 		}
 		matched++

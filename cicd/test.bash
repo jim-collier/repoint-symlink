@@ -55,12 +55,15 @@ else
 fi
 
 ## Fuzz each target for a short burst (longer under CICDTEST_DO_LONGTEST). These
-## hammer the arg parser, the glob translator, the regex engine, and the
-## transform with random input, looking for panics or hangs.
+## hammer the arg parser, the glob translator, the regex engine, the selection
+## pipeline, and the transform with random input, looking for panics or hangs.
+## Targets are listed as 'package:Target' since the glob/regex/selection fuzzers
+## live in the reusable filter package.
 section "Go fuzz (short burst per target)"
 fuzztime="3s"; ((LONG)) && fuzztime="20s"
-for fz in FuzzParseArgs FuzzGlobToRegex FuzzCompileAndMatch FuzzTransform; do
-	if ( cd "${srcdir}" && go test -run='^$' -fuzz="^${fz}\$" -fuzztime="${fuzztime}" . >/dev/null 2>&1 ); then
+for pair in .:FuzzParseArgs .:FuzzTransform ./filter:FuzzGlobToRegex ./filter:FuzzCompileAndMatch ./filter:FuzzSelects; do
+	pkg="${pair%%:*}"; fz="${pair#*:}"
+	if ( cd "${srcdir}" && go test -run='^$' -fuzz="^${fz}\$" -fuzztime="${fuzztime}" "${pkg}" >/dev/null 2>&1 ); then
 		pass "fuzz ${fz} (${fuzztime})"
 	else
 		fail "fuzz ${fz}"

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dlclark/regexp2"
 )
 
 // Repointing a link must replace the link itself, never write through it to the
@@ -120,33 +118,5 @@ func TestSymlinkCycleTerminates(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("walk did not terminate on a cyclic symlink tree")
-	}
-}
-
-// A catastrophic-backtracking pattern must fail within the match timeout rather
-// than hanging. This proves the timeout is wired through compileRE.
-func TestReDoSBounded(t *testing.T) {
-	saved := reMatchTimeout
-	reMatchTimeout = 150 * time.Millisecond
-	defer func() { reMatchTimeout = saved }()
-
-	re, err := compileRE("(a+)+$", regexp2.None)
-	if err != nil {
-		t.Fatalf("pattern should compile: %v", err)
-	}
-	input := strings.Repeat("a", 40) + "!"
-
-	start := time.Now()
-	ok, matchErr := re.MatchString(input)
-	elapsed := time.Since(start)
-
-	if elapsed > 2*time.Second {
-		t.Fatalf("match was not bounded by the timeout: took %v", elapsed)
-	}
-	if ok {
-		t.Fatal("the pathological input should not match")
-	}
-	if matchErr == nil {
-		t.Fatal("a timed-out match should report an error")
 	}
 }

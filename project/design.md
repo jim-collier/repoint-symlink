@@ -34,18 +34,19 @@ A small cross-platform CLI that finds symlinks under a start folder, selects a s
 
 ### Logical code organization
 
-Everything is `package main` under `source/`:
+The CLI is `package main` under `source/`; the selection engine is a standalone package under `source/filter/`:
 
 | File | Responsibility
 | :-- | :--
-| `main.go`         | entry, version, help/examples, orchestration
-| `args.go`         | custom arg parser (prefix abbreviation, `=`/space values, positional 1/2/3)
-| `filter.go`       | compile + apply the ordered selection pipeline (include/exclude/re-include regex, name/iname/wholename/iwholename globs)
-| `walk.go`         | recursive traversal collecting `LinkEntry` (no dir-symlink follow)
-| `link.go`         | shared `LinkEntry` / `LinkKind` types
-| `link_unix.go`    | classify + read/write symlinks (`!windows`)
-| `link_windows.go` | classify + read/write symlinks, junctions, `.lnk` (`windows`)
-| `repoint.go`      | from/to transform, per-entry processing, dry-run, summary
+| `main.go`          | entry, version, help/examples, orchestration
+| `args.go`          | custom arg parser (prefix abbreviation, `=`/space values, positional 1/2/3)
+| `selection.go`     | map the parsed selection flags onto `filter` rule specs
+| `filter/filter.go` | the reusable selection engine: ordered narrow/subtract/re-add pipeline over regex and find-style globs, plus the timeout-bounded regex compiler
+| `walk.go`          | recursive traversal collecting `LinkEntry` (no dir-symlink follow)
+| `link.go`          | shared `LinkEntry` / `LinkKind` types
+| `link_unix.go`     | classify + read/write symlinks (`!windows`)
+| `link_windows.go`  | classify + read/write symlinks, junctions, `.lnk` (`windows`)
+| `repoint.go`       | from/to transform, per-entry processing, dry-run, summary
 
 ### API
 
@@ -65,3 +66,4 @@ See `README.md` for the full flag list. `START`/`FROM`/`TO` are positional alias
 - **Ordered filter pipeline, one fixed effect per flag.** Every selection flag is one rule, kept in command-line order and evaluated left to right. Each flag's effect is fixed and independent of position, so the set reads one flag at a time. Include and the name/wholename globs narrow, exclude subtracts, and re-include re-admits from the original scan. Re-include is the only widener, and the only way to bring back something an exclude dropped. An earlier model let a plain include widen after an exclude; a dedicated widener replaced it so every flag means the same thing wherever it sits.
 - **Globs are find-style**, translated to an anchored regex where `*`/`?` span `/` (matches find's `-wholename`); `--[i]wholename` matches the whole (slash-normalized) path, `--[i]name` the basename.
 - **Symlink rewrite is atomic on POSIX** (create-beside + rename). Windows symlinks are remove+recreate; junctions overwrite the reparse buffer in place; `.lnk` targets are set via the shell object.
+- **The selection engine is its own package** (`source/filter/`), with no ties to the CLI. It takes generic rule specs (narrow/subtract/re-add over a regex or a find-style glob) rather than knowing about any flag. This keeps the pipeline testable on its own and lets a later file-lister project reuse it unchanged. The CLI keeps only a thin adapter that turns its flags into those specs.
