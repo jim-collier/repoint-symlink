@@ -52,7 +52,7 @@ In each section, items are listed approximately from newest to oldest.
 
 ### New features and enhancements
 
-- 🔘 `--no-cross-dev[ice]`: Don't cross underlying filesystem devices.
+- 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
 - 🔘 `--inc-target` / `--exc-target`: Optional *target*-matching regex filters to select links by where they currently point, not just their own path.
 
@@ -60,9 +60,9 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 `-0` / `--print0` NUL-separated output for scripting.
 
-- 🔘 `--renormal-relative` / `--renormal-absolute`: Optional re-normalization of rewritten targets.
+- 🔘 `--renormal-relative` / `--renormal-absolute`: Optional re-normalization of rewritten targets. These can be used with or without renaming options.
 
-- 🔘 `--scan-then-confirm`: Confirm-before-write mode (interactive `y/n`) as an alternative to blind apply.
+- 🔘 `--confirm`: Confirm-before-write mode (interactive `y/n`) as an alternative to blind apply.
 	- Behave similar to a shell script that does something like:
 
 		~~~bash
@@ -93,5 +93,8 @@ In each section, items are listed approximately from newest to oldest.
 
 #### Done - New features and enhancements
 
+- ✅ `--no-cross-device`: don't descend into directories on another filesystem (`find -xdev` style). Per-OS device probe (POSIX `st_dev`, Windows volume serial); prunes at directory boundaries during the walk.
+
 - ✅ Selection engine split into its own reusable package (`source/filter/`), independent of the CLI, so a later file-lister project can use it as-is. The CLI keeps a thin flag-to-rule adapter.
+
 - ✅ Fuzz and security test suites: arg parser, glob translator, regex engine, and the selection pipeline under random input; link-follow safety, symlink-cycle safety, and timeout-bounded matching.

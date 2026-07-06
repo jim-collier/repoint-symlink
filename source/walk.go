@@ -15,8 +15,9 @@ import (
 // collectLinks walks root and returns every link it handles. It does not
 // descend into symlinked directories (WalkDir never follows them), which also
 // keeps it loop-safe. maxDepth < 0 means unlimited; depth 1 = direct children.
+// noCrossDev prunes any directory on a different underlying device (find -xdev).
 // classifyLink is platform-specific (see link_unix.go / link_windows.go).
-func collectLinks(root string, maxDepth int) ([]LinkEntry, error) {
+func collectLinks(root string, maxDepth int, noCrossDev bool) ([]LinkEntry, error) {
 	var links []LinkEntry
 
 	// If the start dir is itself a symlink to a directory, resolve it so we walk
@@ -25,6 +26,14 @@ func collectLinks(root string, maxDepth int) ([]LinkEntry, error) {
 	if info, err := os.Lstat(root); err == nil && info.Mode()&fs.ModeSymlink != 0 {
 		if resolved, err := filepath.EvalSymlinks(root); err == nil {
 			walkRoot = resolved
+		}
+	}
+
+	var rootDev uint64
+	haveRootDev := false
+	if noCrossDev {
+		if rootDev, haveRootDev = statDevice(walkRoot); !haveRootDev {
+			warnf("--no-cross-device: cannot determine device of %s; not pruning", walkRoot)
 		}
 	}
 
@@ -41,6 +50,12 @@ func collectLinks(root string, maxDepth int) ([]LinkEntry, error) {
 				return fs.SkipDir
 			}
 			return nil
+		}
+		// Don't descend into a directory that sits on a different device.
+		if haveRootDev && d.IsDir() && path != walkRoot {
+			if dev, ok := statDevice(path); ok && dev != rootDev {
+				return fs.SkipDir
+			}
 		}
 		entry, ok, classifyErr := classifyLink(path, d)
 		if classifyErr != nil {
