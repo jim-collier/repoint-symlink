@@ -212,6 +212,84 @@ set -e
 if ((rc == 0)); then pass "cyclic tree walked and terminated"; else fail "cyclic tree hung or errored (rc ${rc})"; fi
 rm -rf "${T}"
 
+section "Integration: --no-cross-device is a no-op on one filesystem"
+T="$(mktree)"; T2="$(mktree)"
+plain="$("${EXE}" "${T}"  --from='/mnt/old' --to='/mnt/new' -n | grep -c 'would repoint')"
+xdev="$("${EXE}" "${T2}" --from='/mnt/old' --to='/mnt/new' -n --no-cross-device | grep -c 'would repoint')"
+if [[ "${plain}" == "${xdev}" ]]; then pass "same match count with/without --no-cross-device"; else fail "counts differ (plain=${plain} xdev=${xdev})"; fi
+rm -rf "${T}" "${T2}"
+
+section "Integration: --inc-target / --exc-target select by current target"
+T="$(mktree)"
+out="$("${EXE}" "${T}" --inc-target='^/mnt/old/')"
+assert_grep "${out}" "one.conf" "inc-target keeps a /mnt/old link"
+if grep -qF 'three.txt' <<<"${out}"; then fail "inc-target should drop the /mnt/keep link"; else pass "inc-target narrows out /mnt/keep"; fi
+out="$("${EXE}" "${T}" --inc-target='^/mnt/old/' --exc-target='/z$')"
+if grep -qF 'backup/old.conf' <<<"${out}"; then fail "exc-target should drop /mnt/old/z"; else pass "exc-target subtracts by target"; fi
+out="$("${EXE}" "${T}" --inc='/a/')"
+assert_grep "${out}" "one.conf" "--inc alias still resolves after adding --inc-target"
+rm -rf "${T}"
+
+section "Integration: --follow-links reaches behind a dir symlink, loop-safe"
+T="$(mktemp -d)"; EXT="$(mktemp -d)"
+ln -s /mnt/old/deep "${EXT}/inner.conf"   # link only reachable through the dir symlink
+ln -s "${EXT}"      "${T}/dirlink"
+out_no="$("${EXE}" "${T}")"
+if grep -qF 'inner.conf' <<<"${out_no}"; then fail "should not find a link behind an unfollowed dir symlink"; else pass "default walk stops at the dir symlink"; fi
+out_yes="$("${EXE}" "${T}" -L)"
+assert_grep "${out_yes}" "inner.conf" "--follow-links reaches the link behind the dir symlink"
+rm -rf "${T}" "${EXT}"
+T="$(mktemp -d)"; mkdir -p "${T}/sub"
+ln -s "${T}"       "${T}/sub/loop"   # cycle back to root
+ln -s /mnt/old/x   "${T}/sub/l"
+set +e; timeout 20 "${EXE}" "${T}" -L >/dev/null 2>&1; rc=$?; set -e
+assert_rc "${rc}" "0" "--follow-links terminates on a dir-symlink cycle"
+rm -rf "${T}"
+
+section "Integration: --print0 emits NUL-separated paths, no summary"
+T="$(mktree)"
+n="$("${EXE}" "${T}" --inc-target='^/mnt/old/' -0 | tr -cd '\0' | wc -c)"
+assert_rc "${n}" "3" "one NUL record per /mnt/old match (3)"
+if "${EXE}" "${T}" -0 | grep -qa 'matching'; then fail "print0 leaked the summary line"; else pass "print0 suppresses the summary"; fi
+rm -rf "${T}"
+
+section "Integration: --renormal-relative / --renormal-absolute rewrite target spelling"
+T="$(mktemp -d)"; mkdir -p "${T}/app"
+ln -s "${T}/app/data" "${T}/app/abs"
+"${EXE}" "${T}/app" --name='abs' --renormal-relative >/dev/null
+assert_target "${T}/app/abs" "data" "absolute in-tree target made relative"
+ln -s ../shared/x "${T}/app/rel"
+"${EXE}" "${T}/app" --name='rel' --renormal-absolute >/dev/null
+assert_target "${T}/app/rel" "${T}/shared/x" "relative target made absolute"
+rm -rf "${T}"
+
+section "Integration: --confirm applies on yes, aborts on no"
+T="$(mktemp -d)"; ln -s /mnt/old/z "${T}/l"
+printf 'y\n' | "${EXE}" "${T}" --from='/mnt/old' --to='/mnt/new' --confirm >/dev/null
+assert_target "${T}/l" "/mnt/new/z" "confirm + yes applied the change"
+T2="$(mktemp -d)"; ln -s /mnt/old/z "${T2}/l"
+printf 'n\n' | "${EXE}" "${T2}" --from='/mnt/old' --to='/mnt/new' --confirm >/dev/null
+assert_target "${T2}/l" "/mnt/old/z" "confirm + no wrote nothing"
+rm -rf "${T}" "${T2}"
+
+section "Integration: combined filters + target-filter + renormal (dry-run)"
+T="$(mktree)"
+out="$("${EXE}" "${T}" --iname='*.conf' --exc='/backup/' --inc-target='^/mnt/old/' --from='/mnt/old' --to='/mnt/new' --renormal-absolute -n)"
+assert_grep "${out}" "would repoint" "combined run previews changes"
+assert_grep "${out}" "one.conf"      "combined run keeps the expected link"
+if grep -qF 'backup/old.conf' <<<"${out}"; then fail "excluded link leaked into the combined run"; else pass "combined run honors --exclude"; fi
+rm -rf "${T}"
+
+section "Integration: invalid flag combinations exit 2"
+T="$(mktree)"
+chk(){ set +e; "${EXE}" "$@" >/dev/null 2>&1; local rc=$?; set -e; echo "${rc}"; }
+assert_rc "$(chk "${T}" --renormal-relative --renormal-absolute)" "2" "conflicting renormal directions rejected"
+assert_rc "$(chk "${T}" --confirm --print0)"                      "2" "--confirm with --print0 rejected"
+assert_rc "$(chk "${T}" --from='(' --to='y')"                     "2" "bad --from regex rejected"
+assert_rc "$(chk "${T}" --inc-target='(')"                        "2" "bad --inc-target regex rejected"
+assert_rc "$(chk "${T}" --renormal)"                              "2" "ambiguous --renormal rejected"
+rm -rf "${T}"
+
 if ((LONG)); then
 	section "Long: large tree round-trip"
 	T="$(mktemp -d)"
@@ -236,3 +314,5 @@ printf '  passed: %s%d%s   failed: %s%d%s\n' "${grn}" "${PASSED}" "${rst}" "$( (
 ##	History:
 ##		- 2026-07-04 JC: Created. Go unit tests + integration scenarios over scratch symlink trees.
 ##		- 2026-07-06 JC: Added a fuzz burst per target and end-to-end security scenarios.
+##		- 2026-07-06 JC: Broad feature/combination coverage: device, target filters, follow-links,
+##		  print0, renormal, confirm, a combined run, and invalid-combination exit codes.
