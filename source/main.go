@@ -127,6 +127,7 @@ Edit (what to do with the target each matched link points to):
   --renormal-relative rewrite each target relative to the link's own directory
   --renormal-absolute rewrite each target as a cleaned absolute path
   -n, --dry-run       show what would change; write nothing
+      --confirm       preview the whole plan, then prompt once before writing
   -0, --print0        machine output: one link path per NUL, no summary
 
 With no --from, matching links are just listed. Regex is PCRE-level: lookaround,

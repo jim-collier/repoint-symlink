@@ -6,7 +6,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -40,6 +43,10 @@ type repointer struct {
 
 func buildRepointer(opts *options) (*repointer, error) {
 	rp := &repointer{to: opts.to, literal: opts.literal}
+
+	if opts.confirm && opts.print0 {
+		return nil, fmt.Errorf("--confirm cannot be combined with --print0 (interactive vs machine output)")
+	}
 
 	switch {
 	case opts.renormRel && opts.renormAbs:
@@ -113,10 +120,17 @@ func renormalizeTarget(linkPath, target string, mode renormMode) (string, error)
 	return rel, nil
 }
 
-// process finds, reports, and (unless dry-run) rewrites matching links.
-// Returns the number of links changed and whether any write failed.
+// change is one planned rewrite: a link and the target it should point to.
+type change struct {
+	entry     LinkEntry
+	newTarget string
+}
+
+// process finds, reports, and (unless dry-run or a declined confirm) rewrites
+// matching links. Returns the number changed and whether any write failed.
 func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries []LinkEntry) (changed int, failed bool) {
 	matched := 0
+	var plan []change
 	for _, entry := range entries {
 		if !filt.Selects(entry.Path) || !targetFilt.Selects(entry.Target) {
 			continue
@@ -154,28 +168,56 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 			}
 			continue
 		}
+		plan = append(plan, change{entry, newTarget})
+	}
 
-		verb := "repointed"
-		if opts.dryRun {
-			verb = "would repoint"
+	if !rp.editMode {
+		if !opts.print0 {
+			printSummary(opts, rp, matched, changed)
 		}
-		if !opts.quiet && !opts.print0 {
-			fmt.Printf("%s: %s  [%s]\n    %s -> %s\n", verb, entry.Path, entry.Kind, entry.Target, newTarget)
-		}
-		if opts.dryRun {
+		return changed, failed
+	}
+
+	// Dry run: show the plan (or emit records), write nothing.
+	if opts.dryRun {
+		for _, c := range plan {
 			if opts.print0 {
-				emitRecord(entry.Path)
+				emitRecord(c.entry.Path)
+			} else {
+				showChange("would repoint", c, opts)
 			}
-			changed++
-			continue
 		}
-		if err := writeLinkTarget(entry, newTarget); err != nil {
-			warnf("%s: write failed: %v", entry.Path, err)
+		changed = len(plan)
+		if !opts.print0 {
+			printSummary(opts, rp, matched, changed)
+		}
+		return changed, failed
+	}
+
+	// Confirm: preview the whole plan, then one prompt before writing anything.
+	if opts.confirm && len(plan) > 0 {
+		for _, c := range plan {
+			showChange("would repoint", c, opts)
+		}
+		if !askProceed(len(plan)) {
+			fmt.Fprintln(os.Stderr, "Aborted; nothing written.")
+			return 0, false
+		}
+	}
+
+	for _, c := range plan {
+		// Non-confirm human runs echo each change as it is applied; a confirmed
+		// run already previewed the whole plan above, so don't repeat it.
+		if !opts.confirm && !opts.print0 {
+			showChange("repointed", c, opts)
+		}
+		if err := writeLinkTarget(c.entry, c.newTarget); err != nil {
+			warnf("%s: write failed: %v", c.entry.Path, err)
 			failed = true
 			continue
 		}
 		if opts.print0 {
-			emitRecord(entry.Path)
+			emitRecord(c.entry.Path)
 		}
 		changed++
 	}
@@ -184,6 +226,29 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 		printSummary(opts, rp, matched, changed)
 	}
 	return changed, failed
+}
+
+// showChange prints one planned/applied rewrite in the human format.
+func showChange(verb string, c change, opts *options) {
+	if opts.quiet || opts.print0 {
+		return
+	}
+	fmt.Printf("%s: %s  [%s]\n    %s -> %s\n", verb, c.entry.Path, c.entry.Kind, c.entry.Target, c.newTarget)
+}
+
+// confirmReader is where askProceed reads the y/N answer; overridable in tests.
+var confirmReader io.Reader = os.Stdin
+
+// askProceed prompts on stderr and reads one line; only "y"/"yes" proceeds.
+func askProceed(n int) bool {
+	fmt.Fprintf(os.Stderr, "\nApply %d %s? (y|N): ", n, plural(n, "change", "changes"))
+	line, _ := bufio.NewReader(confirmReader).ReadString('\n')
+	switch strings.TrimSpace(strings.ToLower(line)) {
+	case "y", "yes":
+		return true
+	default:
+		return false
+	}
 }
 
 // emitRecord writes one machine-readable record: the link path, NUL-terminated
