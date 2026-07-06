@@ -125,6 +125,7 @@ Edit (what to do with the target each matched link points to):
   --to=TEMPLATE       replacement; $1 / ${name} reference --from's captures
   -F, --literal       treat --from as a plain literal, not a regex (replace all)
   -n, --dry-run       show what would change; write nothing
+  -0, --print0        machine output: one link path per NUL, no summary
 
 With no --from, matching links are just listed. Regex is PCRE-level: lookaround,
 backreferences, and inline flags like (?i) are supported.

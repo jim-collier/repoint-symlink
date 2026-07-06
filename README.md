@@ -60,6 +60,8 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 - `--dry-run` previews every before/after with nothing written.
 	- By default, renames are applied without preview.
 
+- `-0` / `--print0` emits one link path per NUL for scripting (pipe to `xargs -0`).
+
 - Doesn't follow directory symlinks by default, so it is loop-safe; `-L` opts into following them (still loop-safe).
 
 - Cross-platform. On Windows it also repoints NTFS junctions and `.lnk` shortcut targets.
@@ -123,6 +125,7 @@ Globs vs regexes:
 | `--to=TEMPLATE` | replacement; `$1` / `${name}` reference `--from` captures
 | `-F`, `--literal` | treat `--from` as a plain literal, not a regex (replace all occurrences)
 | `-n`, `--dry-run` | preview; write nothing
+| `-0`, `--print0`  | machine output: one link path per NUL record, no summary (for `xargs -0`)
 
 ## Examples
 
@@ -156,6 +159,9 @@ repoint-symlink /srv --max-depth=2
 
 # Follow directory symlinks while searching (loop-safe)
 repoint-symlink /srv -L --from='/mnt/old' --to='/mnt/new'
+
+# Machine-readable listing piped to another tool
+repoint-symlink /srv --inc='/a/' -0 | xargs -0 -n1 ls -l
 ```
 
 ## Installing
