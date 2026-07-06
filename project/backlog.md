@@ -54,8 +54,6 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
-- 🔘 `-0` / `--print0` NUL-separated output for scripting.
-
 - 🔘 `--renormal-relative` / `--renormal-absolute`: Optional re-normalization of rewritten targets. These can be used with or without renaming options.
 
 - 🔘 `--confirm`: Confirm-before-write mode (interactive `y/n`) as an alternative to blind apply.
@@ -88,6 +86,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ `-0` / `--print0`: machine output, one link path per NUL record, no human decorations or summary (list mode = matches, edit mode = links that change). For `xargs -0` style scripting.
 
 - ✅ `-L` / `--follow-links`: descend into directory symlinks during the walk, loop-safe via a visited-canonical-path set (each directory walked once). Default walk still never follows.
 

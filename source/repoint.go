@@ -66,7 +66,10 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 		matched++
 
 		if !rp.editMode {
-			if !opts.quiet {
+			switch {
+			case opts.print0:
+				emitRecord(entry.Path)
+			case !opts.quiet:
 				fmt.Printf("%s -> %s  [%s]\n", entry.Path, entry.Target, entry.Kind)
 			}
 			continue
@@ -79,7 +82,7 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 			continue
 		}
 		if newTarget == entry.Target {
-			if opts.verbose {
+			if opts.verbose && !opts.print0 {
 				fmt.Printf("unchanged: %s -> %s\n", entry.Path, entry.Target)
 			}
 			continue
@@ -89,10 +92,13 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 		if opts.dryRun {
 			verb = "would repoint"
 		}
-		if !opts.quiet {
+		if !opts.quiet && !opts.print0 {
 			fmt.Printf("%s: %s  [%s]\n    %s -> %s\n", verb, entry.Path, entry.Kind, entry.Target, newTarget)
 		}
 		if opts.dryRun {
+			if opts.print0 {
+				emitRecord(entry.Path)
+			}
 			changed++
 			continue
 		}
@@ -101,11 +107,22 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 			failed = true
 			continue
 		}
+		if opts.print0 {
+			emitRecord(entry.Path)
+		}
 		changed++
 	}
 
-	printSummary(opts, rp, matched, changed)
+	if !opts.print0 {
+		printSummary(opts, rp, matched, changed)
+	}
 	return changed, failed
+}
+
+// emitRecord writes one machine-readable record: the link path, NUL-terminated
+// (find -print0 / xargs -0 convention). Used only with --print0.
+func emitRecord(path string) {
+	fmt.Printf("%s\x00", path)
 }
 
 func printSummary(opts *options, rp *repointer, matched, changed int) {
