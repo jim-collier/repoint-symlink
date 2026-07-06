@@ -52,8 +52,6 @@ In each section, items are listed approximately from newest to oldest.
 
 ### New features and enhancements
 
-- 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
-
 ### Deferred
 
 ### Canceled
@@ -74,6 +72,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ Rigorous feature/combination testing in `cicd/test.bash`, all on scratch symlink trees (never live files): device no-op, target filters + `--inc` alias, follow-links reach-behind + cycle termination, print0 record count + no-summary, renormal relative/absolute round-trip, confirm yes/no, a combined multi-flag run, and invalid-combination exit codes. 56 checks total.
 
 - ✅ `--confirm`: preview the whole plan, then one `y/N` prompt before writing anything (full-plan gate, not per-link). `process` builds the plan first, so one code path drives dry-run, confirm, and apply. Mutually exclusive with `--print0`.
 
