@@ -54,16 +54,6 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
-- 🔘 `--confirm`: Confirm-before-write mode (interactive `y/n`) as an alternative to blind apply.
-	- Behave similar to a shell script that does something like:
-
-		~~~bash
-		repoint-symlink --dry-run "$@" | less -FX
-		echo; read -r -p "Continue (y|N)?: " answer; echo
-		[[ "${answer,,}" == "y" ]] || exit 1
-		repoint-symlink "$@"
-		~~~
-
 ### Deferred
 
 ### Canceled
@@ -84,6 +74,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ `--confirm`: preview the whole plan, then one `y/N` prompt before writing anything (full-plan gate, not per-link). `process` builds the plan first, so one code path drives dry-run, confirm, and apply. Mutually exclusive with `--print0`.
 
 - ✅ `--renormal-relative` / `--renormal-absolute`: re-normalize each target's spelling (relative to the link, or cleaned absolute). Runs after `--from`/`--to`, or standalone to tidy existing targets. Mutually exclusive; logical-path only (no symlink resolution), so the link still points at the same place.
 

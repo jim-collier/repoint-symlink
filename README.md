@@ -63,6 +63,7 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 
 - `--dry-run` previews every before/after with nothing written.
 	- By default, renames are applied without preview.
+	- `--confirm` previews the whole plan, then asks once (`y/N`) before writing.
 
 - `-0` / `--print0` emits one link path per NUL for scripting (pipe to `xargs -0`).
 
@@ -131,6 +132,7 @@ Globs vs regexes:
 | `--renormal-relative` | rewrite each target relative to the link's own directory (usable without `--from`)
 | `--renormal-absolute` | rewrite each target as a cleaned absolute path (usable without `--from`)
 | `-n`, `--dry-run` | preview; write nothing
+| `--confirm`       | preview the whole plan, then prompt once (`y/N`) before writing
 | `-0`, `--print0`  | machine output: one link path per NUL record, no summary (for `xargs -0`)
 
 ## Examples
@@ -171,6 +173,9 @@ repoint-symlink /srv --inc='/a/' -0 | xargs -0 -n1 ls -l
 
 # Convert absolute symlink targets to relative (no --from needed)
 repoint-symlink /srv --renormal-relative
+
+# Review the whole plan and confirm before anything is written
+repoint-symlink /srv --from='/mnt/old' --to='/mnt/new' --confirm
 ```
 
 ## Installing

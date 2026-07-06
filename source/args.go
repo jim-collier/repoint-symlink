@@ -76,6 +76,7 @@ type options struct {
 	literal     bool      // -F: treat --from as a literal string
 	dryRun      bool      // -n: preview, do not write
 	print0      bool      // -0: NUL-separated machine output (one link path per record)
+	confirm     bool      // --confirm: preview the plan, then prompt once before writing
 	verbose     bool      // -v
 	quiet       bool      // -q
 	// terminal actions
@@ -90,7 +91,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "inc-target", "exc-target", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative", "renormal-absolute", "dry-run", "literal", "print0", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative", "renormal-absolute", "dry-run", "literal", "print0", "confirm", "verbose", "quiet", "version", "help", "examples"}
 
 // flagAliases are exact short spellings that must keep resolving even though a
 // longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
@@ -268,6 +269,8 @@ func setBool(opts *options, canon string, enabled bool) {
 		opts.literal = enabled
 	case "print0":
 		opts.print0 = enabled
+	case "confirm":
+		opts.confirm = enabled
 	case "verbose":
 		opts.verbose = enabled
 	case "quiet":
