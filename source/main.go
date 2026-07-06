@@ -99,18 +99,20 @@ Positional (all optional):
 
 Filters (select which links to act on, matched against the link's own path).
 Every filter is one rule in an ordered pipeline - their order matters:
-  --inc[lude]=REGEX   keep links whose path matches (repeatable)
-  --exc[lude]=REGEX   drop links whose path matches (repeatable)
-  --name=GLOB         keep links whose basename matches glob (case-sensitive)
-  --iname=GLOB        same, case-insensitive
-  --wholename=GLOB    keep links whose whole path matches glob (case-sensitive)
-  --iwholename=GLOB   same, case-insensitive
-  --max-depth=N       limit recursion depth (1 = direct children)
+  --inc[lude]=REGEX     keep only links whose path also matches (narrows)
+  --exc[lude]=REGEX     drop links whose path matches (subtracts)
+  --re-inc[lude]=REGEX  re-add links matching this from the original scan (widens)
+  --name=GLOB           keep only links whose basename matches glob (case-sensitive)
+  --iname=GLOB          same, case-insensitive
+  --wholename=GLOB      keep only links whose whole path matches glob (case-sensitive)
+  --iwholename=GLOB     same, case-insensitive
+  --max-depth=N         limit recursion depth (1 = direct children)
 
-Rules run left to right from "everything kept". A keep-rule (include/name/
-iname/wholename/iwholename) after another keep-rule (or first) narrows the set;
-after an --exclude it can expand it, bringing dropped links back. --exclude only
-ever narrows. Globs are find-style ('*' spans '/'); quote them.
+Each flag has one fixed effect, so you can reason left to right one at a time.
+--include and the name/wholename globs narrow (keep only what also matches);
+--exclude subtracts. Both only ever shrink the set. --re-include is the only
+widener: it re-admits any link from the original scan matching its regex, even
+one a prior --exclude dropped. Globs are find-style ('*' spans '/'); quote them.
 
 Edit (what to do with the target each matched link points to):
   --from=REGEX        pattern to match in the target (PCRE-level; (?i) etc.)
@@ -151,8 +153,8 @@ func printExamples() {
   # Whole-path glob (find style): links anywhere under an 'etc' dir
   %s / --wholename='*/etc/*'
 
-  # Order matters: exclude a subtree, then bring one branch back in
-  %s /srv --inc='/srv/' --exc='/srv/vendor/' --inc='/srv/vendor/keep/'
+  # Order matters: drop every .tmp, then rescue the ones under assets/
+  %s /srv --exc='\.tmp$' --re-inc='/assets/.*\.tmp$'
 
   # Regex capture: rewrite /opt/app-1.2.3 -> /opt/app/1.2.3
   %s /srv --from='/opt/app-(\d+\.\d+\.\d+)' --to='/opt/app/$1'

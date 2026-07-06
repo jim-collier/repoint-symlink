@@ -46,10 +46,10 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 - Select links by name, via one or more of:
 	- `--name='*Name*'` / `--iname='*name*'` filename wildcards.
 	- `--wholename='*/Path*/*name'` / `--iwholename='*/path*/*name'` full-path wildcards.
-	- Repeatable, nested `--include=""` / `--exclude=""` regexes:
-		- The first `--include`, or following only other `--include`s, can only narrow results for a given path or leave the same, but not expand.
-		- But an `--include` following an `--exclude` can actually *expand* the resulting list of files, by bringing previously excluded matches back in, for example further down a filesystem hierarchy.
-		- `--exclude` can only ever narrow a result set or leave it the same.
+	- Repeatable, nested `--include=""` / `--exclude=""` / `--re-include=""` regexes, evaluated left to right so you can reason about them one at a time:
+		- `--include` (and the name/wholename globs) only ever *narrow* the set - keep what also matches.
+		- `--exclude` only ever *subtracts*.
+		- `--re-include` is the one *widener*: it re-admits any link from the original scan matching its regex, even one a previous `--exclude` dropped (for example rescuing a single branch further down a hierarchy).
 		- The regex engine is PCRE-level - supporting lookaround, backreferences, inline `(?i)` case flag, etc.
 
 - Rewrite targets with a regex `--from='findstr'` and `--to='replacestr'`.
@@ -73,23 +73,24 @@ repoint-symlink [START] [FROM] [TO] [options]
 
 ### Filters
 
-Filters select which links to act on and match against the link's own path. Every filter is one rule in a single ordered pipeline, evaluated left to right from "everything kept" - so their order on the command line matters:
+Filters select which links to act on and match against the link's own path. Every filter is one rule in a single ordered pipeline, evaluated left to right from "everything kept". Each flag has one fixed effect regardless of position, so you reason through them one at a time - order still matters only because a later rule applies to whatever the earlier ones left:
 
-- A keep-rule (`--include` / `--name` / `--iname` / `--wholename` / `--iwholename`) that follows another keep-rule, or is first, **narrows** the set (result AND match).
-- A keep-rule that follows an `--exclude` can **expand** the set (result OR match), bringing back links a previous exclude had dropped - for example a single branch further down a hierarchy.
-- `--exclude` only ever **narrows** (result AND NOT match).
+- `--include` and the name/wholename globs **narrow** (result AND match) - keep only what also matches.
+- `--exclude` **subtracts** (result AND NOT match).
+- Those two only ever shrink the set. `--re-include` is the one **widener** (result OR match): it re-admits any link from the original scan matching its regex, even one a previous `--exclude` dropped.
 
 Globs are [`find`](https://man7.org/linux/man-pages/man1/find.1.html)-style: `*` and `?` span `/` (so `--wholename` behaves like find's `-wholename`), and patterns must be quoted so the shell doesn't expand them. Regexes are PCRE-level.
 
 | Flag | Matches
 | :-- | :--
-| `--inc[lude]=REGEX` | Keep links whose path matches (repeatable; narrows, or expands after an `--exclude`).
-| `--exc[lude]=REGEX` | Drop links whose path matches (repeatable; only narrows).
-| `--name=GLOB`       | Keep links whose basename matches, case-sensitive.
-| `--iname=GLOB`      | Same, case-insensitive.
-| `--wholename=GLOB`  | Keep links whose whole path matches, case-sensitive.
-| `--iwholename=GLOB` | Same, case-insensitive.
-| `--max-depth=N`     | Limit recursion depth (1 = direct children).
+| `--inc[lude]=REGEX`    | Keep only links whose path also matches (repeatable; narrows).
+| `--exc[lude]=REGEX`    | Drop links whose path matches (repeatable; subtracts).
+| `--re-inc[lude]=REGEX` | Re-add links matching this from the original scan (repeatable; widens).
+| `--name=GLOB`          | Keep only links whose basename matches, case-sensitive.
+| `--iname=GLOB`         | Same, case-insensitive.
+| `--wholename=GLOB`     | Keep only links whose whole path matches, case-sensitive.
+| `--iwholename=GLOB`    | Same, case-insensitive.
+| `--max-depth=N`        | Limit recursion depth (1 = direct children).
 
 ### Editing the target
 
@@ -111,6 +112,9 @@ repoint-symlink /srv --from='/mnt/old' --to='/mnt/new'
 
 # Only *.conf links, skip anything under a 'backup' dir
 repoint-symlink . --iname='*.conf' --exc='/backup/' --from='v1' --to='v2'
+
+# Drop every .tmp link, then rescue the ones under an 'assets' dir
+repoint-symlink /srv --exc='\.tmp$' --re-inc='/assets/.*\.tmp$'
 
 # Regex capture: /opt/app-1.2.3 -> /opt/app/1.2.3
 repoint-symlink /srv --from='/opt/app-(\d+\.\d+\.\d+)' --to='/opt/app/$1'

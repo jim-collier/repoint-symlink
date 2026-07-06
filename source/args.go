@@ -16,16 +16,14 @@ import (
 type selKind int
 
 const (
-	selInclude    selKind = iota // --include REGEX (positive)
-	selExclude                   // --exclude REGEX (negative)
-	selName                      // --name GLOB, basename, case-sensitive (positive)
-	selIName                     // --iname GLOB, basename, case-insensitive (positive)
-	selWholename                 // --wholename GLOB, full path, case-sensitive (positive)
-	selIWholename                // --iwholename GLOB, full path, case-insensitive (positive)
+	selInclude    selKind = iota // --include REGEX (narrows)
+	selExclude                   // --exclude REGEX (subtracts)
+	selReInclude                 // --re-include REGEX (re-admits from the original scan)
+	selName                      // --name GLOB, basename, case-sensitive (narrows)
+	selIName                     // --iname GLOB, basename, case-insensitive (narrows)
+	selWholename                 // --wholename GLOB, full path, case-sensitive (narrows)
+	selIWholename                // --iwholename GLOB, full path, case-insensitive (narrows)
 )
-
-// positive reports whether the rule adds/keeps (everything but --exclude).
-func (k selKind) positive() bool { return k != selExclude }
 
 // isGlob reports whether the rule is a find-style glob (vs a regex).
 func (k selKind) isGlob() bool { return k >= selName }
@@ -36,6 +34,8 @@ func (k selKind) flag() string {
 		return "include"
 	case selExclude:
 		return "exclude"
+	case selReInclude:
+		return "re-include"
 	case selName:
 		return "name"
 	case selIName:
@@ -59,7 +59,7 @@ type options struct {
 	from     string    // regex (or literal with -F); positional 2
 	to       string    // replacement template; positional 3
 	fromSet  bool      // was --from / positional 2 given? (enables edit mode)
-	rules    []selRule // --inc/--exc/--[i]name/--[i]wholename, in order
+	rules    []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
 	maxDepth int       // --max-depth, -1 = unlimited
 	fixed    bool      // -F: treat --from as a literal string
 	dryRun   bool      // -n: preview, do not write
@@ -76,7 +76,7 @@ type options struct {
 // but an exact spelling always wins regardless of length (so --to works).
 const minPrefix = 3
 
-var valueFlags = []string{"include", "exclude", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
+var valueFlags = []string{"include", "exclude", "re-include", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
 var boolFlags = []string{"dry-run", "fixed", "verbose", "quiet", "version", "help", "examples"}
 
 func parseArgs(argv []string) (*options, error) {
@@ -249,6 +249,8 @@ func setValue(opts *options, canon, val string, seenFrom, seenTo *bool) error {
 		opts.rules = append(opts.rules, selRule{selInclude, val})
 	case "exclude":
 		opts.rules = append(opts.rules, selRule{selExclude, val})
+	case "re-include":
+		opts.rules = append(opts.rules, selRule{selReInclude, val})
 	case "name":
 		opts.rules = append(opts.rules, selRule{selName, val})
 	case "iname":

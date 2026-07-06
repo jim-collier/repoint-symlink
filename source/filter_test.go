@@ -40,21 +40,52 @@ func TestExcludeNarrows(t *testing.T) {
 	}
 }
 
-// An include after an exclude expands: it brings back links the exclude dropped.
-func TestIncludeAfterExcludeExpands(t *testing.T) {
+// A plain include only ever narrows - even after an exclude it cannot re-admit
+// what the exclude dropped.
+func TestIncludeAfterExcludeNarrows(t *testing.T) {
 	f := compile(t, rules(
 		selRule{selInclude, `/srv/`},
 		selRule{selExclude, `/srv/vendor/`},
-		selRule{selInclude, `/srv/vendor/keep/`},
+		selRule{selInclude, `/keep/`},
+	))
+	if f.selects("/srv/vendor/keep/x") {
+		t.Fatal("plain include must not re-admit an excluded path")
+	}
+	if f.selects("/srv/live/x") {
+		t.Fatal("third include narrows: non-matching path drops out")
+	}
+	if !f.selects("/srv/keep/x") {
+		t.Fatal("path surviving exclude and matching every include should pass")
+	}
+}
+
+// --re-include re-admits from the original scan what an exclude dropped.
+func TestReincludeAfterExcludeExpands(t *testing.T) {
+	f := compile(t, rules(
+		selRule{selInclude, `/srv/`},
+		selRule{selExclude, `/srv/vendor/`},
+		selRule{selReInclude, `/srv/vendor/keep/`},
 	))
 	if f.selects("/srv/vendor/x") {
-		t.Fatal("excluded path should stay dropped")
+		t.Fatal("excluded path not matched by --re-include should stay dropped")
 	}
 	if !f.selects("/srv/vendor/keep/x") {
-		t.Fatal("include after exclude should bring the path back")
+		t.Fatal("--re-include should bring the excluded path back")
 	}
 	if !f.selects("/srv/live/x") {
 		t.Fatal("plainly included path should pass")
+	}
+}
+
+// --re-include pulls from the whole original scan, not the narrowed set - it can
+// admit a link that never matched any prior include.
+func TestReincludePullsFromOriginal(t *testing.T) {
+	f := compile(t, rules(
+		selRule{selInclude, `/srv/`},
+		selRule{selReInclude, `/other/`},
+	))
+	if !f.selects("/other/x") {
+		t.Fatal("--re-include should admit a path outside the include set")
 	}
 }
 
@@ -92,18 +123,16 @@ func TestWholenameGlobs(t *testing.T) {
 	}
 }
 
-// name after exclude expands just like include after exclude.
-func TestGlobAfterExcludeExpands(t *testing.T) {
+// A name glob after an exclude narrows like any other keep-rule; it does not
+// re-admit what the exclude dropped.
+func TestGlobAfterExcludeNarrows(t *testing.T) {
 	f := compile(t, rules(
 		selRule{selInclude, `/srv/`},
 		selRule{selExclude, `/srv/`},
 		selRule{selName, "keep.conf"},
 	))
-	if f.selects("/srv/drop.conf") {
-		t.Fatal("excluded path should stay dropped")
-	}
-	if !f.selects("/srv/keep.conf") {
-		t.Fatal("name after exclude should bring the path back")
+	if f.selects("/srv/keep.conf") {
+		t.Fatal("name glob must not re-admit an excluded path")
 	}
 }
 

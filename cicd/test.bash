@@ -99,14 +99,21 @@ assert_target "${T}/a/one.conf"      "/mnt/new/data" "*.conf matched"
 assert_target "${T}/backup/old.conf" "/mnt/old/z"    "excluded backup untouched"
 rm -rf "${T}"
 
-section "Integration: ordered filters - include after exclude expands"
+section "Integration: ordered filters - re-include after exclude expands"
 T="$(mktree)"
 ln -s /mnt/old/w "${T}/a/b/other.conf"   # a second link under a/b to prove exclusion
-out="$("${EXE}" "${T}" --inc='/a/' --exc='/a/b/' --inc='/a/b/two')"
+out="$("${EXE}" "${T}" --inc='/a/' --exc='/a/b/' --re-inc='/a/b/two')"
 assert_grep "${out}"   "/a/one.conf"   "under /a/ but not /a/b/ stays in"
-assert_grep "${out}"   "/a/b/two.conf" "third include brings two.conf back"
+assert_grep "${out}"   "/a/b/two.conf" "re-include brings two.conf back"
 if grep -qF '/a/b/other.conf' <<<"${out}"; then fail "excluded other.conf wrongly back"; else pass "other.conf stays excluded"; fi
 if grep -qF '/backup/old.conf' <<<"${out}"; then fail "backup wrongly included"; else pass "backup never included"; fi
+rm -rf "${T}"
+
+section "Integration: ordered filters - plain include narrows, does not re-admit"
+T="$(mktree)"
+ln -s /mnt/old/w "${T}/a/b/other.conf"
+out="$("${EXE}" "${T}" --inc='/a/' --exc='/a/b/' --inc='/a/b/two')"
+if grep -qF '/a/b/two.conf' <<<"${out}"; then fail "plain include wrongly re-admitted excluded link"; else pass "plain include cannot undo an --exclude"; fi
 rm -rf "${T}"
 
 section "Integration: ordered filters - two includes narrow (AND)"

@@ -36,10 +36,10 @@ func TestFlagBeatsPositional(t *testing.T) {
 
 func TestPrefixAbbrev(t *testing.T) {
 	// Abbreviations resolve, and rules keep command-line order + kind.
-	o := mustParse(t, ".", "--inc=a", "--incl=b", "--exc=c", "--who=d", "--iwh=e")
+	o := mustParse(t, ".", "--inc=a", "--incl=b", "--exc=c", "--re-inc=f", "--who=d", "--iwh=e")
 	want := []selRule{
 		{selInclude, "a"}, {selInclude, "b"}, {selExclude, "c"},
-		{selWholename, "d"}, {selIWholename, "e"},
+		{selReInclude, "f"}, {selWholename, "d"}, {selIWholename, "e"},
 	}
 	if len(o.rules) != len(want) {
 		t.Fatalf("rule count wrong: %+v", o.rules)

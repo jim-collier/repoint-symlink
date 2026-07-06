@@ -15,36 +15,57 @@ import (
 )
 
 // filters selects which discovered links to act on. Every selection flag
-// (--include/--exclude regexes and --[i]name/--[i]wholename globs) is one rule
-// here, kept in command-line order, and matched against the link's own path -
-// --from/--to handle the target side.
+// (--include/--exclude/--re-include regexes and --[i]name/--[i]wholename globs)
+// is one rule here, kept in command-line order, and matched against the link's
+// own path - --from/--to handle the target side.
 //
-// Evaluation walks the rules left to right, starting from "everything kept":
-//   - a positive rule (include/name/iname/wholename/iwholename) that follows
-//     another positive rule (or is first) NARROWS: keep = keep AND match.
-//   - a positive rule that follows an --exclude can EXPAND: keep = keep OR match,
-//     bringing links a prior exclude had dropped back in.
-//   - --exclude always narrows: keep = keep AND NOT match.
+// Each rule has ONE intrinsic effect, independent of its neighbours, so the set
+// can be reasoned about sequentially, one flag at a time:
+//   - --include and the name/wholename globs NARROW: keep = keep AND match.
+//   - --exclude SUBTRACTS: keep = keep AND NOT match.
+//   - --re-include RE-ADMITS from the original scan: keep = keep OR match. It
+//     brings back any link matching it, even one a prior --exclude dropped.
 //
-// So order matters: an include after an exclude means something different from
-// an include before it. Regexes are regexp2 (PCRE-level: lookaround, backrefs,
-// inline (?i)); globs are find-style (--wholename == find -wholename), where a
-// '*' spans '/' and patterns should be quoted to survive the shell.
+// Narrow and subtract only ever shrink the set; --re-include is the only widener.
+// Order still matters (a later narrow/subtract applies to whatever a re-include
+// widened). Regexes are regexp2 (PCRE-level: lookaround, backrefs, inline (?i));
+// globs are find-style (--wholename == find -wholename), where a '*' spans '/'
+// and patterns should be quoted to survive the shell.
 type filters struct {
 	rules []rule
 }
 
-// rule is one compiled selection flag: whether it adds or subtracts, and a
-// matcher closure over the link path.
+// op is what a rule does to the running keep-state for a given link.
+type op int
+
+const (
+	opNarrow   op = iota // keep = keep AND match  (include / name globs)
+	opSubtract           // keep = keep AND NOT match  (exclude)
+	opReadd              // keep = keep OR match  (re-include, from original scan)
+)
+
+// rule is one compiled selection flag: its operator and a matcher over the path.
 type rule struct {
-	positive bool
-	match    func(linkPath string) bool
+	op    op
+	match func(linkPath string) bool
+}
+
+// kindOp maps a selection flag to its set operator.
+func kindOp(k selKind) op {
+	switch k {
+	case selExclude:
+		return opSubtract
+	case selReInclude:
+		return opReadd
+	default:
+		return opNarrow
+	}
 }
 
 func compileFilters(opts *options) (*filters, error) {
 	f := &filters{}
 	for _, sr := range opts.rules {
-		r := rule{positive: sr.kind.positive()}
+		r := rule{op: kindOp(sr.kind)}
 		if sr.kind.isGlob() {
 			fold := sr.kind == selIName || sr.kind == selIWholename
 			onBase := sr.kind == selName || sr.kind == selIName
@@ -67,19 +88,15 @@ func compileFilters(opts *options) (*filters, error) {
 
 func (f *filters) selects(linkPath string) bool {
 	keep := true
-	prevExclude := false
 	for _, r := range f.rules {
 		hit := r.match(linkPath)
-		if r.positive {
-			if prevExclude {
-				keep = keep || hit // expand: bring back what an exclude dropped
-			} else {
-				keep = keep && hit // narrow
-			}
-			prevExclude = false
-		} else {
-			keep = keep && !hit // exclude only ever narrows
-			prevExclude = true
+		switch r.op {
+		case opNarrow:
+			keep = keep && hit
+		case opSubtract:
+			keep = keep && !hit
+		case opReadd:
+			keep = keep || hit
 		}
 	}
 	return keep
