@@ -109,7 +109,7 @@ Every filter is one rule in an ordered pipeline - their order matters:
   --wholename=GLOB      keep only links whose whole path matches glob (case-sensitive)
   --iwholename=GLOB     same, case-insensitive
   --max-depth=N         limit recursion depth (1 = direct children)
-  --no-cross-device     don't descend into dirs on another filesystem
+  --no-cross-device     don't descend into dirs on another filesystem (--xdev)
   -L, --follow-links    descend into directory symlinks (loop-safe)
 
 Each flag has one fixed effect, so you can reason left to right one at a time.

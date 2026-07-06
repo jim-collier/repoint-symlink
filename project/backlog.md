@@ -73,6 +73,8 @@ In each section, items are listed approximately from newest to oldest.
 
 #### Done - New features and enhancements
 
+- ✅ `--xdev`: exact alias for `--no-cross-device` (find's spelling), via the `flagAliases` table.
+
 - ✅ Rigorous feature/combination testing in `cicd/test.bash`, all on scratch symlink trees (never live files): device no-op, target filters + `--inc` alias, follow-links reach-behind + cycle termination, print0 record count + no-summary, renormal relative/absolute round-trip, confirm yes/no, a combined multi-flag run, and invalid-combination exit codes. 56 checks total.
 
 - ✅ `--confirm`: preview the whole plan, then one `y/N` prompt before writing anything (full-plan gate, not per-link). `process` builds the plan first, so one code path drives dry-run, confirm, and apply. Mutually exclusive with `--print0`.

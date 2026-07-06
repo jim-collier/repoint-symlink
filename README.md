@@ -119,7 +119,7 @@ Globs vs regexes:
 | `--wholename=GLOB`     | Keep only links whose whole path matches, case-sensitive.
 | `--iwholename=GLOB`    | Same, case-insensitive.
 | `--max-depth=N`        | Limit recursion depth (1 = direct children).
-| `--no-cross-device`    | Don't descend into directories on another filesystem.
+| `--no-cross-device`    | Don't descend into directories on another filesystem (alias `--xdev`).
 | `-L`, `--follow-links` | Descend into directory symlinks (loop-safe).
 
 ### Editing the target

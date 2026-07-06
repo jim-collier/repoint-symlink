@@ -65,6 +65,13 @@ func TestTargetFilterFlags(t *testing.T) {
 	}
 }
 
+// --xdev is an exact alias for --no-cross-device (find's spelling).
+func TestXdevAlias(t *testing.T) {
+	if o := mustParse(t, ".", "--xdev"); !o.noCrossDev {
+		t.Fatal("--xdev should set no-cross-device")
+	}
+}
+
 func TestAmbiguousAndUnknown(t *testing.T) {
 	if _, err := parseArgs([]string{"--ex"}); err == nil {
 		t.Fatal("expected --ex ambiguous (exclude vs examples)")

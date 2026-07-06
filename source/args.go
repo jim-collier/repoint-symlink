@@ -97,8 +97,9 @@ var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative",
 // longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
 // between --include and --inc-target). An exact alias wins before prefix logic.
 var flagAliases = map[string]string{
-	"inc": "include",
-	"exc": "exclude",
+	"inc":  "include",
+	"exc":  "exclude",
+	"xdev": "no-cross-device", // find's spelling
 }
 
 func parseArgs(argv []string) (*options, error) {
