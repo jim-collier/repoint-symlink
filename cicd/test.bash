@@ -45,13 +45,27 @@ if [[ -z "${EXE}" ]]; then
 fi
 [[ -x "${EXE}" ]] || die "binary not executable: ${EXE}"
 
-## Go unit tests first - they cover the arg parser, filters, and transform logic.
+## Go unit tests first - they cover the arg parser, filters, transform logic,
+## and the security properties (link-follow safety, cycle safety, bounded match).
 section "Go unit tests"
 if ( cd "${srcdir}" && go test ./... ); then
 	pass "go test ./..."
 else
 	fail "go test ./..."
 fi
+
+## Fuzz each target for a short burst (longer under CICDTEST_DO_LONGTEST). These
+## hammer the arg parser, the glob translator, the regex engine, and the
+## transform with random input, looking for panics or hangs.
+section "Go fuzz (short burst per target)"
+fuzztime="3s"; ((LONG)) && fuzztime="20s"
+for fz in FuzzParseArgs FuzzGlobToRegex FuzzCompileAndMatch FuzzTransform; do
+	if ( cd "${srcdir}" && go test -run='^$' -fuzz="^${fz}\$" -fuzztime="${fuzztime}" . >/dev/null 2>&1 ); then
+		pass "fuzz ${fz} (${fuzztime})"
+	else
+		fail "fuzz ${fz}"
+	fi
+done
 
 ## Assertions.
 assert_target(){ ## link expected msg
@@ -175,6 +189,26 @@ set -e
 assert_rc "${rc}" "2" "bad flag exits 2"
 rm -rf "${T}"
 
+section "Security: rewrite replaces the link, does not write through it"
+T="$(mktree)"
+printf 'SECRET\n' > "${T}/realfile"
+ln -s "${T}/realfile" "${T}/a/pointer"
+"${EXE}" "${T}/a" --name='pointer' -F --from="${T}/realfile" --to='/mnt/new/z' >/dev/null
+assert_target "${T}/a/pointer" "/mnt/new/z" "pointer repointed"
+if [[ "$(cat "${T}/realfile")" == "SECRET" ]]; then pass "pointed-at file left untouched"; else fail "pointed-at file was modified"; fi
+rm -rf "${T}"
+
+section "Security: symlink cycle does not hang the walk"
+T="$(mktemp -d)"
+ln -s "${T}"       "${T}/self"   # directory self-loop
+ln -s "${T}/b"     "${T}/a"      # mutual file links
+ln -s "${T}/a"     "${T}/b"
+set +e
+timeout 20 "${EXE}" "${T}" >/dev/null 2>&1; rc=$?
+set -e
+if ((rc == 0)); then pass "cyclic tree walked and terminated"; else fail "cyclic tree hung or errored (rc ${rc})"; fi
+rm -rf "${T}"
+
 if ((LONG)); then
 	section "Long: large tree round-trip"
 	T="$(mktemp -d)"
@@ -198,3 +232,4 @@ printf '  passed: %s%d%s   failed: %s%d%s\n' "${grn}" "${PASSED}" "${rst}" "$( (
 
 ##	History:
 ##		- 2026-07-04 JC: Created. Go unit tests + integration scenarios over scratch symlink trees.
+##		- 2026-07-06 JC: Added a fuzz burst per target and end-to-end security scenarios.

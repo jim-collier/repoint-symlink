@@ -7,7 +7,7 @@
 <!-- TOC ignore:true -->
 # Project backlog
 
-This is a product backlog just for pre-v1.0.0 release. After that, bugs, features, and enhancements will be mananged in Github Issues, and/or [todo.md](../todo.md)
+This is a product backlog just for pre-v1.0.0 release. After that, bugs, features, and enhancements will be managed in Github Issues, and/or [todo.md](../todo.md)
 
 <!-- TOC ignore:true -->
 ## Table of contents
@@ -82,9 +82,9 @@ In each section, items are listed approximately from newest to oldest.
 
 - ✅ Scaffold Go project, build/cross-compile matrix, CICD engine + config + test harness.
 - ✅ Core CLI: custom arg parser (prefix abbreviation, `=`/space values, positional START/FROM/TO).
-- ✅ Filters: include/exclude PCRE-level regex + name/iname globs (OR within a kind, AND across kinds).
+- ✅ Filters: include/exclude regex, name and wholename globs, and re-include, as one ordered pipeline.
 - ✅ Recursive walk collecting symlinks, loop-safe (no dir-symlink follow), `--max-depth`.
-- ✅ Repoint engine: regex `--from` + template `--to` (`$1`), literal `-F`, apply-by-default, or show first with `--dry-run`.
+- ✅ Repoint engine: regex `--from` + template `--to` (`$1`), literal `--literal`, apply-by-default, or show first with `--dry-run`.
 - ✅ POSIX (Linux/BSD/macOS) symlink read/atomic rewrite.
 - ✅ Windows symlink + NTFS junction + `.lnk` read/rewrite (compile-verified; see verify item below).
 - ✅ Go unit tests (args/filters/transform/walk) + integration harness over scratch symlink trees.
