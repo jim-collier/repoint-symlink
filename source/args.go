@@ -83,6 +83,7 @@ type options struct {
 	showVersion  bool
 	showHelp     bool
 	showExamples bool
+	showDonate   bool
 }
 
 // long flags that take a value, and the min-unambiguous-prefix minimum length.
@@ -91,7 +92,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "inc-target", "exc-target", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative", "renormal-absolute", "dry-run", "literal", "print0", "confirm", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative", "renormal-absolute", "dry-run", "literal", "print0", "confirm", "verbose", "quiet", "version", "help", "examples", "donate"}
 
 // flagAliases are exact short spellings that must keep resolving even though a
 // longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
@@ -282,6 +283,8 @@ func setBool(opts *options, canon string, enabled bool) {
 		opts.showHelp = enabled
 	case "examples":
 		opts.showExamples = enabled
+	case "donate":
+		opts.showDonate = enabled
 	}
 }
 

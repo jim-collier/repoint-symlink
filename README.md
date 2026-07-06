@@ -29,6 +29,7 @@ Find symlinks anywhere under a folder and rewrite where they point. Filter which
 	- [Filters](#filters)
 	- [Editing the target](#editing-the-target)
 - [Examples](#examples)
+- [Donating](#donating)
 - [Installing](#installing)
 - [Building from source](#building-from-source)
 - [Copyright and license](#copyright-and-license)
@@ -177,6 +178,12 @@ repoint-symlink /srv --renormal-relative
 # Review the whole plan and confirm before anything is written
 repoint-symlink /srv --from='/mnt/old' --to='/mnt/new' --confirm
 ```
+
+## Donating
+
+If you find this tool useful, please consider a donation. `repoint-symlink --donate` prints the current crypto addresses and links.
+
+The addresses are signed with the maintainer's key (held outside the repository) and a build-time gate rejects any release whose address table was changed without re-signing - so a stray or malicious edit can't quietly redirect donations. Details in [`packaging/donation-signing.md`](packaging/donation-signing.md).
 
 ## Installing
 

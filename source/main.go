@@ -40,6 +40,9 @@ func run(argv []string) int {
 	case opts.showExamples:
 		printExamples()
 		return 0
+	case opts.showDonate:
+		printDonate()
+		return 0
 	}
 
 	filt, targetFilt, err := compileFilters(opts)
@@ -138,6 +141,7 @@ Other:
   -q, --quiet         only warnings and errors
       --version       print version and exit
       --examples      print usage examples and exit
+      --donate        show the project's donation addresses and exit
   -h, --help          this help
 
 Note: %s edits symlink targets in place by default. Use -n to preview first.
