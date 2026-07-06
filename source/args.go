@@ -61,7 +61,7 @@ type options struct {
 	fromSet  bool      // was --from / positional 2 given? (enables edit mode)
 	rules    []selRule // --inc/--exc/--re-inc/--[i]name/--[i]wholename, in order
 	maxDepth int       // --max-depth, -1 = unlimited
-	fixed    bool      // -F: treat --from as a literal string
+	literal  bool      // -F: treat --from as a literal string
 	dryRun   bool      // -n: preview, do not write
 	verbose  bool      // -v
 	quiet    bool      // -q
@@ -77,7 +77,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"dry-run", "fixed", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"dry-run", "literal", "verbose", "quiet", "version", "help", "examples"}
 
 func parseArgs(argv []string) (*options, error) {
 	opts := &options{dir: ".", maxDepth: -1}
@@ -157,7 +157,7 @@ func parseShort(arg string, opts *options) error {
 		case 'n':
 			opts.dryRun = true
 		case 'F':
-			opts.fixed = true
+			opts.literal = true
 		case 'v':
 			opts.verbose = true
 		case 'q':
@@ -228,8 +228,8 @@ func setBool(opts *options, canon string, enabled bool) {
 	switch canon {
 	case "dry-run":
 		opts.dryRun = enabled
-	case "fixed":
-		opts.fixed = enabled
+	case "literal":
+		opts.literal = enabled
 	case "verbose":
 		opts.verbose = enabled
 	case "quiet":

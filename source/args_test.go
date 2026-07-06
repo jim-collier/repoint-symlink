@@ -77,8 +77,8 @@ func TestShortBundling(t *testing.T) {
 		t.Fatalf("bundled shorts: %+v", o)
 	}
 	o = mustParse(t, ".", "-F")
-	if !o.fixed {
-		t.Fatal("-F should set fixed")
+	if !o.literal {
+		t.Fatal("-F should set literal")
 	}
 }
 

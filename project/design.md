@@ -60,7 +60,7 @@ See `README.md` for the full flag list. `START`/`FROM`/`TO` are positional alias
 ### Decisions
 
 - **Apply by default**, `--dry-run` opt-in preview. Destructive-but-reversible; a dry run is one flag away.
-- **`--from` is a regex, `--to` a template**; `-F` switches to literal replace-all.
+- **`--from` is a regex, `--to` a template**; `-F`/`--literal` switches to literal replace-all.
 - **Filters match the link's own path**, not its target - `--from`/`--to` already select by target implicitly (a link whose target does not match is left unchanged). Optional target-matching filters are a backlog item.
 - **Ordered filter pipeline, one fixed effect per flag.** Every selection flag is one rule, kept in command-line order and evaluated left to right from "everything kept". Each flag's operator is intrinsic (position-independent), so the set can be reasoned about sequentially: `--include` and the `--[i]name`/`--[i]wholename` globs narrow (AND); `--exclude` subtracts (AND NOT); `--re-include` re-admits from the original scan (OR) - the only widener, and the only way to bring back something an `--exclude` dropped. Chosen over an earlier context-dependent model (where a plain include auto-widened after an exclude) because a dedicated widener keeps every flag's meaning independent of its neighbours, and it simplifies `selects()` (no prev-rule state).
 - **Globs are find-style**, translated to an anchored regex where `*`/`?` span `/` (matches find's `-wholename`); `--[i]wholename` matches the whole (slash-normalized) path, `--[i]name` the basename.
