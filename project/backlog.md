@@ -73,6 +73,8 @@ In each section, items are listed approximately from newest to oldest.
 
 #### Done - New features and enhancements
 
+- ✅ OS-aware dogfood destinations in `cicd/config.bash`: `DOGFOOD_FIXED_DESTS` is now selected by `uname -s` (Linux / macOS / Windows-under-Git-Bash), with sensible per-OS defaults. Engine unchanged (still installs into the first existing + writable dir).
+
 - ✅ `--xdev`: exact alias for `--no-cross-device` (find's spelling), via the `flagAliases` table.
 
 - ✅ Rigorous feature/combination testing in `cicd/test.bash`, all on scratch symlink trees (never live files): device no-op, target filters + `--inc` alias, follow-links reach-behind + cycle termination, print0 record count + no-summary, renormal relative/absolute round-trip, confirm yes/no, a combined multi-flag run, and invalid-combination exit codes. 56 checks total.

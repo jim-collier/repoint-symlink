@@ -55,12 +55,31 @@ BUILD_CROSS=1
 RELEASE_CMD=(make -C "${SRC_DIR}" release)
 RELEASE_ARTIFACT_DIR="${SRC_DIR}/dist"
 
-## Stage 5: dogfood. Overwrite EXE_NAME in the first existing dir below (the stable
-## path you launch by hand). Empty the list to skip.
-DOGFOOD_FIXED_DESTS=(
-	"${HOME}/synced/0-0/common/exec/util/linux/bin"
-	"/usr/local/sbin"
-)
+## Stage 5: dogfood. Install the native build (EXE_NAME) into the first existing +
+## writable dir for the running OS. These are sensible defaults - edit to taste.
+## Empty the chosen list to skip. Note: the Windows pipeline isn't run yet, so its
+## paths are placeholders and the copied file keeps the plain name (no .exe).
+case "$(uname -s)" in
+	Darwin)                    ## macOS
+		DOGFOOD_FIXED_DESTS=(
+			"${HOME}/synced/0-0/common/exec/util/macos/bin"
+			"${HOME}/.local/bin"
+			"/opt/homebrew/bin"    ## Apple Silicon Homebrew
+			"/usr/local/bin"       ## Intel Homebrew
+		) ;;
+	MINGW*|MSYS*|CYGWIN*)      ## Windows under Git Bash / MSYS2 / Cygwin
+		DOGFOOD_FIXED_DESTS=(
+			"${HOME}/bin"
+			"${LOCALAPPDATA:-${HOME}/AppData/Local}/Programs/${APP_NAME}"
+		) ;;
+	*)                         ## Linux / other POSIX
+		DOGFOOD_FIXED_DESTS=(
+			"${HOME}/synced/0-0/common/exec/util/linux/bin"
+			"${HOME}/.local/bin"
+			"/usr/local/bin"
+			"/usr/local/sbin"
+		) ;;
+esac
 
 ## Stage 6: backup + publish to git (runs from repo root). Quiet mode keeps it
 ## non-interactive so the whole pipeline can finish unattended.
@@ -70,3 +89,4 @@ GIT_PUBLISH=(cicd/utility/n8git_backup-and-publish)
 
 ##	History:
 ##		- 2026-07-04 JC: Created for repoint-symlink (generic engine + config split, adapted from the sister project).
+##		- 2026-07-06 JC: OS-aware dogfood destinations (Linux/macOS/Windows) selected by uname.
