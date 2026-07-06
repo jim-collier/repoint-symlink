@@ -77,7 +77,7 @@ func TestNoDescendIntoDirSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entries, err := collectLinks(root, -1, false)
+	entries, err := collectLinks(root, -1, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestSymlinkCycleTerminates(t *testing.T) {
 	}
 
 	done := make(chan error, 1)
-	go func() { _, err := collectLinks(root, -1, false); done <- err }()
+	go func() { _, err := collectLinks(root, -1, false, false); done <- err }()
 	select {
 	case err := <-done:
 		if err != nil {

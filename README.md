@@ -43,6 +43,7 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 
 - Recursive search from a start folder (default: current directory).
 	- `--max-depth` caps recursion; `--no-cross-device` stays on one filesystem (`find -xdev` style).
+	- `-L` / `--follow-links` descends into directory symlinks (loop-safe: each directory is walked once).
 
 - Select which links to touch, by the link's own path or by where it points.
 	- Name and path globs: `--name` / `--iname`, `--wholename` / `--iwholename`.
@@ -59,7 +60,7 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 - `--dry-run` previews every before/after with nothing written.
 	- By default, renames are applied without preview.
 
-- Doesn't follow directory symlinks (without a flag), so it is loop-safe.
+- Doesn't follow directory symlinks by default, so it is loop-safe; `-L` opts into following them (still loop-safe).
 
 - Cross-platform. On Windows it also repoints NTFS junctions and `.lnk` shortcut targets.
 
@@ -112,6 +113,7 @@ Globs vs regexes:
 | `--iwholename=GLOB`    | Same, case-insensitive.
 | `--max-depth=N`        | Limit recursion depth (1 = direct children).
 | `--no-cross-device`    | Don't descend into directories on another filesystem.
+| `-L`, `--follow-links` | Descend into directory symlinks (loop-safe).
 
 ### Editing the target
 
@@ -151,6 +153,9 @@ repoint-symlink . -F --from='C:\Old' --to='C:\New'
 
 # List every symlink two levels deep
 repoint-symlink /srv --max-depth=2
+
+# Follow directory symlinks while searching (loop-safe)
+repoint-symlink /srv -L --from='/mnt/old' --to='/mnt/new'
 ```
 
 ## Installing

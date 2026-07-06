@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // buildTree lays down a small symlink tree and returns its root.
@@ -38,7 +39,7 @@ func targetsByBase(entries []LinkEntry) map[string]string {
 
 func TestCollectAll(t *testing.T) {
 	root := buildTree(t)
-	entries, err := collectLinks(root, -1, false)
+	entries, err := collectLinks(root, -1, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestNoCrossDeviceSingleFS(t *testing.T) {
 	if dev, ok := statDevice(root); !ok || dev == 0 {
 		t.Skip("device id unavailable on this platform")
 	}
-	entries, err := collectLinks(root, -1, true)
+	entries, err := collectLinks(root, -1, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,9 +72,72 @@ func TestNoCrossDeviceSingleFS(t *testing.T) {
 	}
 }
 
+// Without --follow-links a directory symlink is reported but not descended;
+// with it, links underneath its target are found too.
+func TestFollowLinks(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "real")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/mnt/old/deep", filepath.Join(real, "inner")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, filepath.Join(root, "dirlink")); err != nil {
+		t.Fatal(err)
+	}
+
+	noFollow := targetsByBase(mustCollect(t, root, false))
+	if _, ok := noFollow["dirlink"]; !ok {
+		t.Fatal("the directory symlink itself should be reported")
+	}
+
+	follow := targetsByBase(mustCollect(t, root, true))
+	if follow["inner"] != "/mnt/old/deep" {
+		t.Fatalf("follow should find the link under the dir symlink: %+v", follow)
+	}
+}
+
+// A directory symlink cycle must terminate under --follow-links.
+func TestFollowLinksCycleTerminates(t *testing.T) {
+	root := t.TempDir()
+	sub := filepath.Join(root, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(root, filepath.Join(sub, "loop")); err != nil { // points back at root
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/mnt/old/x", filepath.Join(sub, "l")); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan []LinkEntry, 1)
+	go func() {
+		entries, _ := collectLinks(root, -1, false, true)
+		done <- entries
+	}()
+	select {
+	case entries := <-done:
+		if targetsByBase(entries)["l"] != "/mnt/old/x" {
+			t.Fatal("expected to find the real link while following")
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("follow walk hung on a cycle")
+	}
+}
+
+func mustCollect(t *testing.T, root string, follow bool) []LinkEntry {
+	t.Helper()
+	entries, err := collectLinks(root, -1, false, follow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
 func TestCollectMaxDepth(t *testing.T) {
 	root := buildTree(t)
-	entries, err := collectLinks(root, 2, false) // exclude the depth-3 link
+	entries, err := collectLinks(root, 2, false, false) // exclude the depth-3 link
 	if err != nil {
 		t.Fatal(err)
 	}
