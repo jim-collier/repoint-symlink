@@ -54,8 +54,6 @@ In each section, items are listed approximately from newest to oldest.
 
 - 🔘 CICD process: Rigorous testing of all features, possible combinations (valid and invalid), except not on live files.
 
-- 🔘 `--renormal-relative` / `--renormal-absolute`: Optional re-normalization of rewritten targets. These can be used with or without renaming options.
-
 - 🔘 `--confirm`: Confirm-before-write mode (interactive `y/n`) as an alternative to blind apply.
 	- Behave similar to a shell script that does something like:
 
@@ -86,6 +84,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ `--renormal-relative` / `--renormal-absolute`: re-normalize each target's spelling (relative to the link, or cleaned absolute). Runs after `--from`/`--to`, or standalone to tidy existing targets. Mutually exclusive; logical-path only (no symlink resolution), so the link still points at the same place.
 
 - ✅ `-0` / `--print0`: machine output, one link path per NUL record, no human decorations or summary (list mode = matches, edit mode = links that change). For `xargs -0` style scripting.
 
