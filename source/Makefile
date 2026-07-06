@@ -19,7 +19,7 @@ PLATFORMS := \
 all: local
 
 local:
-	go build -ldflags '$(LDFLAGS)' -o $(BINARY) ./...
+	go build -ldflags '$(LDFLAGS)' -o $(BINARY) .
 
 # Cross-compile every platform listed above into ./dist/
 release: clean
@@ -33,7 +33,7 @@ release: clean
 		echo "building $$stage/$(BINARY)$$ext"; \
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch \
 			go build -trimpath -ldflags '$(LDFLAGS)' \
-			-o "$$stage/$(BINARY)$$ext" ./...; \
+			-o "$$stage/$(BINARY)$$ext" .; \
 		if [ "$$os" = "windows" ]; then \
 			( cd "$$stage" && zip -qr "../$(BINARY)-$$os-$$label.zip" . ); \
 		else \

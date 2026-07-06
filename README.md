@@ -43,7 +43,11 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 
 - Recursive search from a start folder (default: current directory).
 
-- Select which links to touch with name/path globs (`--name`/`--iname`, `--wholename`/`--iwholename`) and repeatable `--include` / `--exclude` / `--re-include` regexes, evaluated left to right so you reason about them one at a time (see [Filters](#filters)). The regex engine is PCRE-level - lookaround, backreferences, inline `(?i)` case flag, etc.
+- Select which links to touch, matched against the link's own path.
+	- Name and path globs: `--name` / `--iname`, `--wholename` / `--iwholename`.
+	- Repeatable `--include` / `--exclude` / `--re-include` regexes.
+	- Flags apply left to right, so you reason about them one at a time (see [Filters](#filters)).
+	- PCRE-level regex: lookaround, backreferences, inline `(?i)` case flag.
 
 - Rewrite targets with a regex `--from='findstr'` and `--to='replacestr'`.
 	- `$1`, `${name}` capture references in `--to`.
@@ -67,13 +71,31 @@ repoint-symlink [START] [FROM] [TO] [options]
 
 ### Filters
 
-Filters select which links to act on and match against the link's own path. Every filter is one rule in a single ordered pipeline, evaluated left to right from "everything kept". Each flag has one fixed effect regardless of position, so you reason through them one at a time - order still matters only because a later rule applies to whatever the earlier ones left:
+Filters pick which links to act on. Each one matches the link's own path, not its target.
 
-- `--include` and the name/wholename globs **narrow** (result AND match) - keep only what also matches.
-- `--exclude` **subtracts** (result AND NOT match).
-- Those two only ever shrink the set. `--re-include` is the one **widener** (result OR match): it re-admits any link from the original scan matching its regex, even one a previous `--exclude` dropped.
+How the pipeline reads:
 
-Globs are [`find`](https://man7.org/linux/man-pages/man1/find.1.html)-style: `*` and `?` span `/` (so `--wholename` behaves like find's `-wholename`), and patterns must be quoted so the shell doesn't expand them. Regexes are PCRE-level.
+- Every filter flag is one rule.
+- Rules run left to right, starting from "all links kept".
+- Each flag's effect is fixed, so you read them one at a time.
+- Order still matters: a later rule acts on whatever the earlier ones left.
+
+What each kind does:
+
+- **Narrow** - keep only links that also match.
+	- `--include` (regex), and every name/wholename glob.
+- **Subtract** - drop links that match.
+	- `--exclude` (regex).
+- **Widen** - re-admit links from the original scan.
+	- `--re-include` (regex), the only widener.
+	- Brings back even a link a previous `--exclude` dropped.
+
+Globs vs regexes:
+
+- Globs are [`find`](https://man7.org/linux/man-pages/man1/find.1.html)-style.
+	- `*` and `?` span `/`, so `--wholename` behaves like find's `-wholename`.
+	- Quote them so the shell doesn't expand them.
+- Regexes are PCRE-level (lookaround, backreferences, inline `(?i)`).
 
 | Flag | Matches
 | :-- | :--
@@ -107,11 +129,17 @@ repoint-symlink /srv --from='/mnt/old' --to='/mnt/new'
 # Only *.conf links, skip anything under a 'backup' dir
 repoint-symlink . --iname='*.conf' --exc='/backup/' --from='v1' --to='v2'
 
+# Whole-path glob (find style): links anywhere under an 'etc' dir
+repoint-symlink / --wholename='*/etc/*'
+
 # Drop every .tmp link, then rescue the ones under an 'assets' dir
 repoint-symlink /srv --exc='\.tmp$' --re-inc='/assets/.*\.tmp$'
 
 # Regex capture: /opt/app-1.2.3 -> /opt/app/1.2.3
 repoint-symlink /srv --from='/opt/app-(\d+\.\d+\.\d+)' --to='/opt/app/$1'
+
+# Literal replace (no regex) - handy for Windows paths
+repoint-symlink . -F --from='C:\Old' --to='C:\New'
 
 # List every symlink two levels deep
 repoint-symlink /srv --max-depth=2
