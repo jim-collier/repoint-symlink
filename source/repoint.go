@@ -7,52 +7,110 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/dlclark/regexp2"
 	"github.com/jim-collier/repoint-symlink/filter"
 )
 
+// renormMode re-normalizes a target after any --from/--to rewrite. It can be
+// used on its own (no --from) to just tidy existing targets.
+type renormMode int
+
+const (
+	renormNone     renormMode = iota
+	renormRelative            // rewrite the target relative to the link's own dir
+	renormAbsolute            // rewrite the target as a cleaned absolute path
+)
+
 // repointer turns a current target into a new one per --from/--to. In regex
 // mode --from is a pattern and --to a template ($1, ${name}); with -F it is a
-// plain literal and every occurrence is replaced.
+// plain literal and every occurrence is replaced. An optional renormal step
+// then rewrites the result relative to, or absolute from, the link's own dir.
 type repointer struct {
 	fromRE   *regexp2.Regexp
 	fromLit  string
 	to       string
 	literal  bool
+	hasFrom  bool
+	renormal renormMode
 	editMode bool
 }
 
 func buildRepointer(opts *options) (*repointer, error) {
 	rp := &repointer{to: opts.to, literal: opts.literal}
-	if !opts.fromSet || opts.from == "" {
-		if opts.fromSet && opts.from == "" {
-			warnf("--from is empty; listing matches only")
+
+	switch {
+	case opts.renormRel && opts.renormAbs:
+		return nil, fmt.Errorf("--renormal-relative and --renormal-absolute are mutually exclusive")
+	case opts.renormRel:
+		rp.renormal = renormRelative
+	case opts.renormAbs:
+		rp.renormal = renormAbsolute
+	}
+
+	if opts.fromSet && opts.from != "" {
+		rp.hasFrom = true
+		if opts.literal {
+			rp.fromLit = opts.from
+		} else {
+			re, err := filter.CompileRegex(opts.from, false)
+			if err != nil {
+				return nil, fmt.Errorf("bad --from regex %q: %w", opts.from, err)
+			}
+			rp.fromRE = re
 		}
-		return rp, nil // list-only
+	} else if opts.fromSet && opts.from == "" && rp.renormal == renormNone {
+		warnf("--from is empty; listing matches only")
 	}
-	rp.editMode = true
-	if opts.literal {
-		rp.fromLit = opts.from
-		return rp, nil
-	}
-	re, err := filter.CompileRegex(opts.from, false)
-	if err != nil {
-		return nil, fmt.Errorf("bad --from regex %q: %w", opts.from, err)
-	}
-	rp.fromRE = re
+
+	// A renormal-only run still edits (rewrites targets) even without --from.
+	rp.editMode = rp.hasFrom || rp.renormal != renormNone
 	return rp, nil
 }
 
+// transform applies the --from/--to (or literal) substitution. Renormalization
+// is a separate step (renormalizeTarget) since it needs the link's own path.
 func (r *repointer) transform(target string) (string, error) {
-	if !r.editMode {
+	if !r.editMode || !r.hasFrom {
 		return target, nil
 	}
 	if r.literal {
 		return strings.ReplaceAll(target, r.fromLit, r.to), nil
 	}
 	return r.fromRE.Replace(target, r.to, -1, -1)
+}
+
+// renormalizeTarget rewrites target to an absolute cleaned path or to one
+// relative to the link's own directory. It normalizes the logical path only -
+// it does not resolve symlinks in the target, so the link keeps pointing at the
+// same place, just spelled differently.
+func renormalizeTarget(linkPath, target string, mode renormMode) (string, error) {
+	if mode == renormNone {
+		return target, nil
+	}
+	dir := filepath.Dir(linkPath)
+	abs := target
+	if !filepath.IsAbs(abs) {
+		abs = filepath.Join(dir, abs)
+	}
+	abs, err := filepath.Abs(abs)
+	if err != nil {
+		return target, err
+	}
+	if mode == renormAbsolute {
+		return abs, nil
+	}
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return target, err
+	}
+	rel, err := filepath.Rel(absDir, abs)
+	if err != nil {
+		return target, err
+	}
+	return rel, nil
 }
 
 // process finds, reports, and (unless dry-run) rewrites matching links.
@@ -80,6 +138,15 @@ func process(opts *options, filt, targetFilt *filter.Set, rp *repointer, entries
 			warnf("%s: transform failed: %v", entry.Path, err)
 			failed = true
 			continue
+		}
+		if rp.renormal != renormNone {
+			normalized, nerr := renormalizeTarget(entry.Path, newTarget, rp.renormal)
+			if nerr != nil {
+				warnf("%s: renormalize failed: %v", entry.Path, nerr)
+				failed = true
+				continue
+			}
+			newTarget = normalized
 		}
 		if newTarget == entry.Target {
 			if opts.verbose && !opts.print0 {

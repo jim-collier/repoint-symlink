@@ -57,6 +57,10 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 	- `-F` / `--literal` matches `--from` as a plain literal instead of a regex, replacing every occurrence.
 		- Handy for Windows paths, where `\` and `:` would otherwise be regex-special and need escaping - e.g. `-F --from='C:\Old' --to='C:\New'` just works.
 
+- Normalize target spelling with `--renormal-relative` / `--renormal-absolute`.
+	- Rewrites each target relative to the link, or as a cleaned absolute path.
+	- Runs after any `--from`/`--to`, or on its own to just tidy existing targets.
+
 - `--dry-run` previews every before/after with nothing written.
 	- By default, renames are applied without preview.
 
@@ -124,6 +128,8 @@ Globs vs regexes:
 | `--from=REGEX`  | pattern to match inside each target
 | `--to=TEMPLATE` | replacement; `$1` / `${name}` reference `--from` captures
 | `-F`, `--literal` | treat `--from` as a plain literal, not a regex (replace all occurrences)
+| `--renormal-relative` | rewrite each target relative to the link's own directory (usable without `--from`)
+| `--renormal-absolute` | rewrite each target as a cleaned absolute path (usable without `--from`)
 | `-n`, `--dry-run` | preview; write nothing
 | `-0`, `--print0`  | machine output: one link path per NUL record, no summary (for `xargs -0`)
 
@@ -162,6 +168,9 @@ repoint-symlink /srv -L --from='/mnt/old' --to='/mnt/new'
 
 # Machine-readable listing piped to another tool
 repoint-symlink /srv --inc='/a/' -0 | xargs -0 -n1 ls -l
+
+# Convert absolute symlink targets to relative (no --from needed)
+repoint-symlink /srv --renormal-relative
 ```
 
 ## Installing

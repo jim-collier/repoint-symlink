@@ -124,6 +124,8 @@ Edit (what to do with the target each matched link points to):
   --from=REGEX        pattern to match in the target (PCRE-level; (?i) etc.)
   --to=TEMPLATE       replacement; $1 / ${name} reference --from's captures
   -F, --literal       treat --from as a plain literal, not a regex (replace all)
+  --renormal-relative rewrite each target relative to the link's own directory
+  --renormal-absolute rewrite each target as a cleaned absolute path
   -n, --dry-run       show what would change; write nothing
   -0, --print0        machine output: one link path per NUL, no summary
 

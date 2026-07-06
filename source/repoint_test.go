@@ -70,3 +70,53 @@ func TestBadFromRegex(t *testing.T) {
 		t.Fatal("expected bad regex error")
 	}
 }
+
+// Absolute paths keep these deterministic (filepath.Abs only cleans them).
+func TestRenormalizeAbsolute(t *testing.T) {
+	cases := []struct{ link, target, want string }{
+		{"/srv/app/link", "../data", "/srv/data"},    // relative target, resolved
+		{"/srv/app/link", "/opt/./x/../y", "/opt/y"}, // absolute target, cleaned
+		{"/srv/app/link", "/opt/data", "/opt/data"},  // already normal
+	}
+	for _, c := range cases {
+		got, err := renormalizeTarget(c.link, c.target, renormAbsolute)
+		if err != nil {
+			t.Fatalf("renormalize(%q,%q): %v", c.link, c.target, err)
+		}
+		if got != c.want {
+			t.Fatalf("absolute %q from %q = %q, want %q", c.target, c.link, got, c.want)
+		}
+	}
+}
+
+func TestRenormalizeRelative(t *testing.T) {
+	cases := []struct{ link, target, want string }{
+		{"/srv/app/link", "/srv/app/data", "data"},   // sibling
+		{"/srv/app/link", "/mnt/x", "../../mnt/x"},   // escapes the tree
+		{"/srv/app/link", "/srv/app/sub/y", "sub/y"}, // deeper
+	}
+	for _, c := range cases {
+		got, err := renormalizeTarget(c.link, c.target, renormRelative)
+		if err != nil {
+			t.Fatalf("renormalize(%q,%q): %v", c.link, c.target, err)
+		}
+		if got != c.want {
+			t.Fatalf("relative %q from %q = %q, want %q", c.target, c.link, got, c.want)
+		}
+	}
+}
+
+// Renormal is usable on its own: it enables edit mode without --from, and the
+// two directions are mutually exclusive.
+func TestRenormalEnablesEditAndConflict(t *testing.T) {
+	rp, err := buildRepointer(&options{renormAbs: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rp.editMode || rp.hasFrom {
+		t.Fatalf("renormal-only should edit without --from: %+v", rp)
+	}
+	if _, err := buildRepointer(&options{renormRel: true, renormAbs: true}); err == nil {
+		t.Fatal("both renormal directions should be rejected")
+	}
+}

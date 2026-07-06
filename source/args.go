@@ -71,6 +71,8 @@ type options struct {
 	maxDepth    int       // --max-depth, -1 = unlimited
 	noCrossDev  bool      // --no-cross-device: don't descend onto other filesystems
 	followLinks bool      // -L, --follow-links: descend into directory symlinks
+	renormRel   bool      // --renormal-relative: rewrite targets relative to the link
+	renormAbs   bool      // --renormal-absolute: rewrite targets as absolute paths
 	literal     bool      // -F: treat --from as a literal string
 	dryRun      bool      // -n: preview, do not write
 	print0      bool      // -0: NUL-separated machine output (one link path per record)
@@ -88,7 +90,7 @@ type options struct {
 const minPrefix = 3
 
 var valueFlags = []string{"include", "exclude", "re-include", "inc-target", "exc-target", "name", "iname", "wholename", "iwholename", "from", "to", "max-depth"}
-var boolFlags = []string{"no-cross-device", "follow-links", "dry-run", "literal", "print0", "verbose", "quiet", "version", "help", "examples"}
+var boolFlags = []string{"no-cross-device", "follow-links", "renormal-relative", "renormal-absolute", "dry-run", "literal", "print0", "verbose", "quiet", "version", "help", "examples"}
 
 // flagAliases are exact short spellings that must keep resolving even though a
 // longer flag now shares their prefix (e.g. --inc would otherwise be ambiguous
@@ -256,6 +258,10 @@ func setBool(opts *options, canon string, enabled bool) {
 		opts.noCrossDev = enabled
 	case "follow-links":
 		opts.followLinks = enabled
+	case "renormal-relative":
+		opts.renormRel = enabled
+	case "renormal-absolute":
+		opts.renormAbs = enabled
 	case "dry-run":
 		opts.dryRun = enabled
 	case "literal":
