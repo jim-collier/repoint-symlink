@@ -17,5 +17,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Traversal controls: `--no-cross-device` (alias `--xdev`, `find -xdev` style) and `-L` / `--follow-links` (descend into directory symlinks, loop-safe).
 - `--renormal-relative` / `--renormal-absolute`: normalize each target's spelling (relative to the link, or cleaned absolute); usable without `--from`.
 - `--confirm`: preview the whole plan, then prompt once before writing. `-0` / `--print0`: NUL-separated output for scripting.
+- Running with no arguments prints help instead of scanning the current directory (pass `.` to list it).
 - Windows: NTFS junction and `.lnk` shortcut targets in addition to symlinks (built and cross-compiled, pending run-test on real Windows).
 - Cross-compile matrix for linux/macOS/windows on amd64+arm64; Go unit tests and an integration test harness.

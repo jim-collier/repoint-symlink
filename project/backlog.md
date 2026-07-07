@@ -46,7 +46,7 @@ In each section, items are listed approximately from newest to oldest.
 
 ### Todo
 
-- 🔘 Verify the Windows paths on real Windows hardware: symlink recreate (file vs dir flag, privilege), junction reparse-buffer write, and `.lnk` `TargetPath` set/save. (Because...built and cross-compiled from Linux.)
+- Verify the Windows paths on real Windows hardware: symlink recreate (file vs dir flag, privilege), junction reparse-buffer write, and `.lnk` `TargetPath` set/save. (Because...built and cross-compiled from Linux.)
 
 ### Bugs
 
@@ -72,6 +72,8 @@ In each section, items are listed approximately from newest to oldest.
 #### Done - Bugs
 
 #### Done - New features and enhancements
+
+- ✅ When run with no args, behave like `--help` (print help, exit 0) instead of silently scanning the current directory. Pass `.` explicitly to list it.
 
 - ✅ OS-aware dogfood destinations in `cicd/config.bash`: `DOGFOOD_FIXED_DESTS` is now selected by `uname -s` (Linux / macOS / Windows-under-Git-Bash), with sensible per-OS defaults. Engine unchanged (still installs into the first existing + writable dir).
 
