@@ -73,8 +73,6 @@ In each section, items are listed approximately from newest to oldest.
 
 #### Done - New features and enhancements
 
-- ✅ `--donate` + protect donation secrets: `--donate` lists the project's crypto addresses/URLs (placeholder-aware - never prints an unset value). The address table (`source/donation/`) is signed with an out-of-repo ed25519 key; a cicd gate (`TestDonationTableSigned`) rejects any release whose table was edited without re-signing. `CanonicalBytes()` is the single signed/verified content, emitted by `cmd/donation-canonical` for the sign helper (`packaging/sign-donations.bash`). Ported from the rapid-photo-downloader-pro sister project. Open-source-build feature.
-
 - ✅ OS-aware dogfood destinations in `cicd/config.bash`: `DOGFOOD_FIXED_DESTS` is now selected by `uname -s` (Linux / macOS / Windows-under-Git-Bash), with sensible per-OS defaults. Engine unchanged (still installs into the first existing + writable dir).
 
 - ✅ `--xdev`: exact alias for `--no-cross-device` (find's spelling), via the `flagAliases` table.

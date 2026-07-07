@@ -280,12 +280,6 @@ assert_grep "${out}" "one.conf"      "combined run keeps the expected link"
 if grep -qF 'backup/old.conf' <<<"${out}"; then fail "excluded link leaked into the combined run"; else pass "combined run honors --exclude"; fi
 rm -rf "${T}"
 
-section "Integration: --donate lists donation info (placeholder-safe)"
-out="$("${EXE}" --donate)"; rc=$?
-assert_rc "${rc}" "0" "--donate exits 0"
-assert_grep "${out}" "Support repoint-symlink" "--donate shows a support header"
-if grep -qF 'PLACEHOLDER_' <<<"${out}"; then fail "--donate leaked a placeholder value"; else pass "placeholders are never printed"; fi
-
 section "Integration: invalid flag combinations exit 2"
 T="$(mktree)"
 chk(){ set +e; "${EXE}" "$@" >/dev/null 2>&1; local rc=$?; set -e; echo "${rc}"; }
