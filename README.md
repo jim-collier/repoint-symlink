@@ -77,7 +77,7 @@ Moving a directory, renaming a mount, or restructuring a tree leaves a scatter o
 repoint-symlink [START] [FROM] [TO] [options]
 ```
 
-`START`, `FROM`, and `TO` may be given positionally (in that order) or as `--from` / `--to`. With no `--from`, matching links are just listed.
+`START`, `FROM`, and `TO` may be given positionally (in that order) or as `--from` / `--to`. With no `--from`, matching links are just listed. Run with no arguments at all to print this help (pass `.` explicitly to list the current directory).
 
 ### Filters
 

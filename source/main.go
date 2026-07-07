@@ -23,6 +23,13 @@ func main() {
 }
 
 func run(argv []string) int {
+	// Bare invocation: nothing to do, so show help rather than silently
+	// scanning the current directory.
+	if len(argv) == 0 {
+		printHelp()
+		return 0
+	}
+
 	opts, err := parseArgs(argv)
 	if err != nil {
 		errorf("%v", err)

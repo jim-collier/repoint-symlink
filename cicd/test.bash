@@ -192,6 +192,13 @@ set -e
 assert_rc "${rc}" "2" "bad flag exits 2"
 rm -rf "${T}"
 
+section "Integration: no args prints help (exit 0)"
+set +e
+out="$("${EXE}" 2>&1)"; rc=$?
+set -e
+assert_rc "${rc}" "0" "no args exits 0"
+assert_grep "${out}" "Usage:" "no args prints help"
+
 section "Security: rewrite replaces the link, does not write through it"
 T="$(mktree)"
 printf 'SECRET\n' > "${T}/realfile"
@@ -316,3 +323,4 @@ printf '  passed: %s%d%s   failed: %s%d%s\n' "${grn}" "${PASSED}" "${rst}" "$( (
 ##		- 2026-07-06 JC: Added a fuzz burst per target and end-to-end security scenarios.
 ##		- 2026-07-06 JC: Broad feature/combination coverage: device, target filters, follow-links,
 ##		  print0, renormal, confirm, a combined run, and invalid-combination exit codes.
+##		- 2026-07-06 JC: no-args-prints-help check.
